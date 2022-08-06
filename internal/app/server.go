@@ -5,6 +5,7 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
 	"github.com/rainset/shortener/internal/helper"
+	"github.com/rainset/shortener/internal/queue"
 	"github.com/rainset/shortener/internal/storage"
 )
 
@@ -111,4 +112,8 @@ func (a *App) AddBatchURL(list []AddURLBatchRequest) (result []AddURLBatchRespon
 func (a *App) AddUserHistoryURL(userID, hash string) (err error) {
 	err = a.s.AddUserHistoryURL(userID, hash)
 	return err
+}
+
+func (a *App) DeleteUserBatchURL(userID string, hashes []string) {
+	a.dq.Push(&queue.Task{UserID: userID, Hashes: hashes})
 }

@@ -130,7 +130,7 @@ func (d *Database) AddUserHistoryURL(cookieID, hash string) error {
 
 func (d *Database) GetListUserHistoryURL(cookieID string) (result []storage.ResultHistoryURL, err error) {
 
-	q := "SELECT DISTINCT uh.hash, uh.id, uh.cookie_id, u.original FROM user_history_urls uh INNER JOIN urls u ON u.hash = uh.hash WHERE uh.cookie_id =$1"
+	q := "SELECT DISTINCT uh.hash, uh.id, uh.cookie_id, u.original FROM user_history_urls uh INNER JOIN urls u ON u.hash = uh.hash WHERE uh.cookie_id =$1 AND u.deleted=0"
 	rows, err := d.pgx.Query(context.Background(), q, cookieID)
 
 	if err != nil {

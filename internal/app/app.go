@@ -20,7 +20,7 @@ import (
 )
 
 type App struct {
-	Queue  *queue.DeleteURLQueue
+	dq     *queue.DeleterQueue
 	s      storage.InterfaceStorage
 	Config Config
 }
@@ -43,20 +43,13 @@ type Session struct {
 // New инициализация основного объекта приложения
 func New(storage storage.InterfaceStorage, c Config) *App {
 
-	newQueue := queue.NewDeleteURLQueue(storage)
-	go newQueue.PeriodicURLDelete()
-
-	workers := make([]*queue.DeleteURLWorker, 0, 1)
-	workers = append(workers, queue.NewDeleteURLWorker(1, newQueue, storage))
-
-	for _, w := range workers {
-		go w.Loop()
-	}
+	dq := queue.NewDeleterQueue(storage)
+	go dq.Init()
 
 	return &App{
 		s:      storage,
 		Config: c,
-		Queue:  newQueue,
+		dq:     dq,
 	}
 
 }

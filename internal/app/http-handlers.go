@@ -15,7 +15,6 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/rainset/shortener/internal/helper"
-	queue "github.com/rainset/shortener/internal/queue"
 )
 
 type ShortenerHTTPServer struct {
@@ -248,7 +247,7 @@ func (s *ShortenerHTTPServer) DeleteUserBatchURLHandler(c *gin.Context) {
 			c.AbortWithStatus(http.StatusBadRequest)
 			return
 		}
-		s.a.Queue.Push(&queue.Task{CookieID: session.UserID, Hashes: hashes})
+		s.a.DeleteUserBatchURL(session.UserID, hashes)
 	}
 
 	c.Status(http.StatusAccepted)
