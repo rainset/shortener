@@ -31,15 +31,8 @@ func (a *App) RouteHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Bad Url", 400)
 			return
 		}
-
-		// test data
-		urlId = "link1"
-		url, ok := a.urls[urlId]
-		if !ok {
-			http.Error(w, "Bad Url", 400)
-			return
-		}
-		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+		url := "http://cehme.ru/ces4suo/a1dez"
+		http.Redirect(w, r, url, http.StatusMovedPermanently)
 
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
