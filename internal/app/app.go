@@ -46,7 +46,7 @@ func (a App) RouteHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Redirect(w, r, url, http.StatusMovedPermanently)
+		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 
 	case http.MethodPost:
 		var bodyBytes []byte
