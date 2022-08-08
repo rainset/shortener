@@ -1,12 +1,12 @@
 package app
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"github.com/gorilla/mux"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"strings"
-	"time"
 )
 
 type App struct {
@@ -17,56 +17,41 @@ func New() *App {
 	return &App{urls: make(map[string]string)}
 }
 
-func (a App) AddUrl(value string) string {
-	seconds := time.Now().Second()
-	randInt := rand.Intn(9999999)
-	code := fmt.Sprintf("%d%d", randInt, seconds)
-	a.urls[code] = value
-	return code
+func (a *App) AddUrl(value string) string {
+	binHash := md5.Sum([]byte(value))
+	hash := hex.EncodeToString(binHash[:])
+	a.urls[hash] = value
+	return hash
 }
 
-func (a App) GetUrl(code string) string {
-	return a.urls[code]
-}
+func (a *App) GetUrlHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	urlId := vars["id"]
+	url := a.urls[urlId]
 
-func (a App) RouteHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		p := strings.Split(r.URL.Path, "/")[1:]
-		urlId := p[0]
-		if urlId == "" {
-			http.Error(w, "Bad Url", 400)
-			return
-		}
-
-		url, ok := a.urls[urlId]
-
-		if !ok {
-			http.Error(w, "Bad Url", 400)
-			return
-		}
-
-		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
-
-	case http.MethodPost:
-		var bodyBytes []byte
-		var err error
-
-		if r.Body != nil {
-			bodyBytes, err = ioutil.ReadAll(r.Body)
-			if err != nil {
-				fmt.Printf("Body reading error: %v", err)
-				return
-			}
-			defer r.Body.Close()
-		}
-		code := a.AddUrl(string(bodyBytes))
-		shortenUrl := fmt.Sprintf("http://localhost:8080/%s", code)
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(shortenUrl))
-
-	default:
-		http.Error(w, "Sorry, only GET and POST methods are supported.", 400)
+	if url == "" {
+		http.Error(w, "Bad Url", 400)
 		return
 	}
+
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+func (a *App) SaveUrlHandler(w http.ResponseWriter, r *http.Request) {
+	var bodyBytes []byte
+	var err error
+
+	if r.Body != nil {
+		bodyBytes, err = ioutil.ReadAll(r.Body)
+		if err != nil || len(bodyBytes) == 0 {
+			http.Error(w, "Body reading error", 400)
+			return
+		}
+		defer r.Body.Close()
+	}
+	code := a.AddUrl(string(bodyBytes))
+
+	shortenUrl := fmt.Sprintf("http://localhost:8080/%s", code)
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(shortenUrl))
 }
