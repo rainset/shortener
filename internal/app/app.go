@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
@@ -18,17 +17,17 @@ func New() *App {
 	return &App{urls: make(map[string]string)}
 }
 
-func (a *App) AddUrl(value string) string {
+func (a *App) AddURL(value string) string {
 	binHash := md5.Sum([]byte(value))
 	hash := hex.EncodeToString(binHash[:])
 	a.urls[hash] = value
 	return hash
 }
 
-func (a *App) GetUrlHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	urlId := vars["id"]
-	url := a.urls[urlId]
+	urlID := vars["id"]
+	url := a.urls[urlID]
 
 	if url == "" {
 		http.Error(w, "Bad Url", 400)
@@ -38,7 +37,7 @@ func (a *App) GetUrlHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-func (a *App) SaveUrlHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	var bodyBytes []byte
 	var err error
 
@@ -50,11 +49,9 @@ func (a *App) SaveUrlHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 	}
-	code := a.AddUrl(string(bodyBytes))
-
-	shortenUrl := fmt.Sprintf("http://localhost:8080/%s", code)
-	byteShortenUrl := []byte(shortenUrl)
+	code := a.AddURL(string(bodyBytes))
+	shortenURL := fmt.Sprintf("http://localhost:8080/%s", code)
 
 	w.WriteHeader(http.StatusCreated)
-	log.Fatal(w.Write(byteShortenUrl))
+	w.Write([]byte(shortenURL))
 }

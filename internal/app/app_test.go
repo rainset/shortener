@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestApp_SaveUrlHandler(t *testing.T) {
+func TestApp_SaveURLHandler(t *testing.T) {
 	// определяем структуру теста
 	type want struct {
 		code     int
@@ -56,7 +56,7 @@ func TestApp_SaveUrlHandler(t *testing.T) {
 			r := httptest.NewRequest("POST", "http://localhost:8080", bytes.NewBuffer([]byte(tt.want.postData)))
 
 			application := New()
-			application.SaveUrlHandler(w, r)
+			application.SaveURLHandler(w, r)
 
 			res := w.Result()
 			defer res.Body.Close()
@@ -74,7 +74,7 @@ func TestApp_SaveUrlHandler(t *testing.T) {
 	}
 }
 
-func TestApp_GetUrlHandler(t *testing.T) {
+func TestApp_GetURLHandler(t *testing.T) {
 	// определяем структуру теста
 	type want struct {
 		code     int
@@ -113,8 +113,8 @@ func TestApp_GetUrlHandler(t *testing.T) {
 			r := httptest.NewRequest("GET", tt.request, nil)
 
 			app := New()
-			app.AddUrl("https://yandex.ru")
-			app.GetUrlHandler(w, r)
+			app.AddURL("https://yandex.ru")
+			app.GetURLHandler(w, r)
 
 			res := w.Result()
 			defer res.Body.Close()
