@@ -79,7 +79,6 @@ func TestApp_GetUrlHandler(t *testing.T) {
 	type want struct {
 		code     int
 		response string
-		postData string
 	}
 
 	// создаём массив тестов: имя и желаемый результат

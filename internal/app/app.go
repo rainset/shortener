@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"io/ioutil"
+	"log"
 	"net/http"
 )
 
@@ -52,6 +53,8 @@ func (a *App) SaveUrlHandler(w http.ResponseWriter, r *http.Request) {
 	code := a.AddUrl(string(bodyBytes))
 
 	shortenUrl := fmt.Sprintf("http://localhost:8080/%s", code)
+	byteShortenUrl := []byte(shortenUrl)
+
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(shortenUrl))
+	log.Fatal(w.Write(byteShortenUrl))
 }
