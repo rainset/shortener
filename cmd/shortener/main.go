@@ -14,8 +14,8 @@ func main() {
 	application := app.New()
 
 	r := mux.NewRouter()
-	r.HandleFunc("/", application.SaveUrlHandler).Methods("POST")
-	r.HandleFunc("/{id:[0-9a-z]+}", application.GetUrlHandler).Methods("GET")
+	r.HandleFunc("/", application.SaveURLHandler).Methods("POST")
+	r.HandleFunc("/{id:[0-9a-z]+}", application.GetURLHandler).Methods("GET")
 	http.Handle("/", r)
 
 	log.Print("Listening...")
