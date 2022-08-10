@@ -53,5 +53,11 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	shortenURL := fmt.Sprintf("http://localhost:8080/%s", code)
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(shortenURL))
+
+	_, writeError := w.Write([]byte(shortenURL))
+	if writeError != nil {
+		http.Error(w, "response body error", 400)
+		return
+	}
+
 }
