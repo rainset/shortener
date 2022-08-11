@@ -7,9 +7,11 @@ import (
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
+	"sync"
 )
 
 type App struct {
+	sync.RWMutex
 	urls map[string]string
 }
 
@@ -18,6 +20,8 @@ func New() *App {
 }
 
 func (a *App) AddURL(value string) string {
+	a.Lock()
+	defer a.Unlock()
 	binHash := md5.Sum([]byte(value))
 	hash := hex.EncodeToString(binHash[:])
 	a.urls[hash] = value
