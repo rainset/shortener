@@ -20,18 +20,24 @@ func New() *App {
 }
 
 func (a *App) AddURL(value string) string {
-	a.Lock()
-	defer a.Unlock()
+	a.RLock()
+	defer a.RUnlock()
 	binHash := md5.Sum([]byte(value))
 	hash := hex.EncodeToString(binHash[:])
 	a.urls[hash] = value
 	return hash
 }
 
+func (a *App) GetURL(urlID string) string {
+	a.RLock()
+	defer a.RUnlock()
+	return a.urls[urlID]
+}
+
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	urlID := vars["id"]
-	url := a.urls[urlID]
+	url := a.GetURL(urlID)
 
 	if url == "" {
 		http.Error(w, "Bad Url", 400)
