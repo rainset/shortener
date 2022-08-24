@@ -14,9 +14,9 @@ func main() {
 	application := app.New()
 
 	r := mux.NewRouter()
+	r.HandleFunc("/api/shorten", application.SaveURLJSONHandler).Methods("POST")
 	r.HandleFunc("/", application.SaveURLHandler).Methods("POST")
 	r.HandleFunc("/{id:[0-9a-z]+}", application.GetURLHandler).Methods("GET")
-	r.HandleFunc("/api/shorten", application.SaveURLJSONHandler).Methods("POST")
 	http.Handle("/", r)
 
 	log.Print("Listening...")

@@ -16,15 +16,6 @@ type App struct {
 	urls map[string]string
 }
 
-type dataJSON struct {
-	URL string `json:"url"`
-}
-
-type ErrorResponse struct {
-	Code    int
-	Message string
-}
-
 func New() *App {
 	return &App{urls: make(map[string]string)}
 }
@@ -82,19 +73,30 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
+	type ShortenRequest struct {
+		URL string `json:"url"`
+	}
+	type ShortenResponse struct {
+		Result string `json:"result"`
+	}
+
 	var bodyBytes []byte
 	var err error
 
 	if r.Body != nil {
 		bodyBytes, err = ioutil.ReadAll(r.Body)
+
+		fmt.Println(len(bodyBytes))
+
 		if err != nil || len(bodyBytes) == 0 {
 			a.ShowJSONError(w, 400, "Only Json format requred in request body")
 			return
 		}
+
 		defer r.Body.Close()
 	}
 
-	value := dataJSON{}
+	value := ShortenRequest{}
 	if err := json.Unmarshal(bodyBytes, &value); err != nil {
 		a.ShowJSONError(w, 400, "Only Json format requred in request body")
 		return
@@ -102,14 +104,14 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 	code := a.AddURL(value.URL)
 	shortenURL := a.GenerateShortenURL(code)
-	shortenData := dataJSON{URL: shortenURL}
+	shortenData := ShortenResponse{Result: shortenURL}
 	shortenJSON, err := json.Marshal(shortenData)
 	if err != nil {
 		panic(err)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
 
 	_, writeError := w.Write(shortenJSON)
 	if writeError != nil {
@@ -124,14 +126,20 @@ func (a *App) GenerateShortenURL(shortenCode string) string {
 }
 
 func (a *App) ShowJSONError(w http.ResponseWriter, code int, message string) {
-	dataJSON, err := json.Marshal(ErrorResponse{Code: code, Message: message})
+
+	type ErrorResponse struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	}
+
+	data, err := json.Marshal(ErrorResponse{Code: code, Message: message})
 	if err != nil {
 		panic(err)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 
-	_, writeError := w.Write(dataJSON)
+	_, writeError := w.Write(data)
 	if writeError != nil {
 		panic(writeError)
 	}

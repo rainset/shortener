@@ -157,7 +157,7 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 			},
 			want: want{
 				code:     201,
-				response: `{"url":"http://localhost:8080/e9db20b246fb7d3ffba1b2182fbcf167"}`,
+				response: `{"result":"http://localhost:8080/e9db20b246fb7d3ffba1b2182fbcf167"}`,
 			},
 		},
 		{
@@ -168,7 +168,7 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 			},
 			want: want{
 				code:     400,
-				response: `{"Code":400,"Message":"Only Json format requred in request body"}`,
+				response: `{"code":400,"message":"Only Json format requred in request body"}`,
 			},
 		},
 		{
@@ -179,7 +179,7 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 			},
 			want: want{
 				code:     400,
-				response: `{"Code":400,"Message":"Only Json format requred in request body"}`,
+				response: `{"code":400,"message":"Only Json format requred in request body"}`,
 			},
 		},
 	}
