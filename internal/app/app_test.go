@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"github.com/stretchr/testify/require"
 	"io"
+	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 )
 
@@ -209,6 +211,80 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 			}
 			require.Equal(t, tt.want.response, string(data))
 
+		})
+	}
+}
+
+func TestApp_ShowJSONError(t *testing.T) {
+	type fields struct {
+		RWMutex sync.RWMutex
+		urls    map[string]string
+	}
+	type args struct {
+		w       http.ResponseWriter
+		code    int
+		message string
+	}
+
+	w := httptest.NewRecorder()
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "stringCode",
+			args: args{
+				w:       w,
+				code:    400,
+				message: "Only Json format required in request body",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			a := &App{
+				RWMutex: tt.fields.RWMutex,
+				urls:    tt.fields.urls,
+			}
+			a.ShowJSONError(tt.args.w, tt.args.code, tt.args.message)
+		})
+	}
+}
+
+func TestApp_GenerateShortenURL(t *testing.T) {
+	type fields struct {
+		RWMutex sync.RWMutex
+		urls    map[string]string
+	}
+	type args struct {
+		shortenCode string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   string
+	}{
+		{
+			name: "Generate shorten link",
+			args: args{
+				shortenCode: "tescode",
+			},
+			want: "http://localhost:8080/tescode",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &App{
+				RWMutex: tt.fields.RWMutex,
+				urls:    tt.fields.urls,
+			}
+			if got := a.GenerateShortenURL(tt.args.shortenCode); got != tt.want {
+				t.Errorf("GenerateShortenURL() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
