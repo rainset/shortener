@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 )
 
@@ -202,9 +201,6 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 			// проверяем код ответа
 			require.Equal(t, tt.want.code, result.StatusCode)
 
-			// Проверяем Content-Type
-			require.Equal(t, "application/json", result.Header.Get("Content-Type"))
-
 			data, err := io.ReadAll(result.Body)
 			if err != nil {
 				t.Fatal(err)
@@ -216,10 +212,7 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 }
 
 func TestApp_ShowJSONError(t *testing.T) {
-	type fields struct {
-		RWMutex sync.RWMutex
-		urls    map[string]string
-	}
+
 	type args struct {
 		w       http.ResponseWriter
 		code    int
@@ -229,9 +222,8 @@ func TestApp_ShowJSONError(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
+		name string
+		args args
 	}{
 		{
 			name: "stringCode",
@@ -242,31 +234,24 @@ func TestApp_ShowJSONError(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			a := &App{
-				RWMutex: tt.fields.RWMutex,
-				urls:    tt.fields.urls,
-			}
+			a := &App{}
 			a.ShowJSONError(tt.args.w, tt.args.code, tt.args.message)
 		})
 	}
 }
 
 func TestApp_GenerateShortenURL(t *testing.T) {
-	type fields struct {
-		RWMutex sync.RWMutex
-		urls    map[string]string
-	}
 	type args struct {
 		shortenCode string
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   string
+		name string
+		args args
+		want string
 	}{
 		{
 			name: "Generate shorten link",
@@ -278,10 +263,7 @@ func TestApp_GenerateShortenURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := &App{
-				RWMutex: tt.fields.RWMutex,
-				urls:    tt.fields.urls,
-			}
+			a := &App{}
 			if got := a.GenerateShortenURL(tt.args.shortenCode); got != tt.want {
 				t.Errorf("GenerateShortenURL() = %v, want %v", got, tt.want)
 			}
