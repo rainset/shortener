@@ -73,6 +73,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
+
 	type ShortenRequest struct {
 		URL string `json:"url"`
 	}
@@ -89,7 +90,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(len(bodyBytes))
 
 		if err != nil || len(bodyBytes) == 0 {
-			a.ShowJSONError(w, 400, "Only Json format requred in request body")
+			a.ShowJSONError(w, 400, "Only Json format required in request body")
 			return
 		}
 
@@ -98,7 +99,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 	value := ShortenRequest{}
 	if err := json.Unmarshal(bodyBytes, &value); err != nil {
-		a.ShowJSONError(w, 400, "Only Json format requred in request body")
+		a.ShowJSONError(w, 400, "Only Json format required in request body")
 		return
 	}
 
