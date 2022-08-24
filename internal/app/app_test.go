@@ -132,7 +132,7 @@ func TestApp_GetURLHandler(t *testing.T) {
 	}
 }
 
-func TestApp_SaveURLJsonHandler(t *testing.T) {
+func TestApp_SaveURLJSONHandler(t *testing.T) {
 
 	type request struct {
 		url  string
@@ -192,7 +192,7 @@ func TestApp_SaveURLJsonHandler(t *testing.T) {
 			r := httptest.NewRequest("POST", tt.request.url, bytes.NewBuffer([]byte(tt.request.data)))
 
 			application := New()
-			application.SaveURLJsonHandler(w, r)
+			application.SaveURLJSONHandler(w, r)
 
 			result := w.Result()
 			result.Body.Close()

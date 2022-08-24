@@ -17,7 +17,7 @@ type App struct {
 }
 
 type JsonData struct {
-	Url string `json:"url"`
+	URL string `json:"url"`
 }
 
 type ErrorResponse struct {
@@ -70,7 +70,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 	}
 	code := a.AddURL(string(bodyBytes))
-	shortenURL := a.GenerateShortenUrl(code)
+	shortenURL := a.GenerateShortenURL(code)
 
 	w.WriteHeader(http.StatusCreated)
 
@@ -81,14 +81,14 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
-func (a *App) SaveURLJsonHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 	var bodyBytes []byte
 	var err error
 
 	if r.Body != nil {
 		bodyBytes, err = ioutil.ReadAll(r.Body)
 		if err != nil || len(bodyBytes) == 0 {
-			a.ShowJsonError(w, 400, "Only Json format requred in request body")
+			a.ShowJSONError(w, 400, "Only Json format requred in request body")
 			return
 		}
 		defer r.Body.Close()
@@ -96,14 +96,14 @@ func (a *App) SaveURLJsonHandler(w http.ResponseWriter, r *http.Request) {
 
 	value := JsonData{}
 	if err := json.Unmarshal(bodyBytes, &value); err != nil {
-		a.ShowJsonError(w, 400, "Only Json format requred in request body")
+		a.ShowJSONError(w, 400, "Only Json format requred in request body")
 		return
 	}
 
-	code := a.AddURL(value.Url)
-	shortenURL := a.GenerateShortenUrl(code)
-	shortenData := JsonData{Url: shortenURL}
-	shortenJson, err := json.Marshal(shortenData)
+	code := a.AddURL(value.URL)
+	shortenURL := a.GenerateShortenURL(code)
+	shortenData := JsonData{URL: shortenURL}
+	shortenJSON, err := json.Marshal(shortenData)
 	if err != nil {
 		panic(err)
 	}
@@ -111,7 +111,7 @@ func (a *App) SaveURLJsonHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	_, writeError := w.Write(shortenJson)
+	_, writeError := w.Write(shortenJSON)
 	if writeError != nil {
 		http.Error(w, "response body error", 400)
 		return
@@ -119,19 +119,19 @@ func (a *App) SaveURLJsonHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (a *App) GenerateShortenUrl(shortenCode string) string {
+func (a *App) GenerateShortenURL(shortenCode string) string {
 	return fmt.Sprintf("http://localhost:8080/%s", shortenCode)
 }
 
-func (a *App) ShowJsonError(w http.ResponseWriter, code int, message string) {
-	dataJson, err := json.Marshal(ErrorResponse{Code: code, Message: message})
+func (a *App) ShowJSONError(w http.ResponseWriter, code int, message string) {
+	dataJSON, err := json.Marshal(ErrorResponse{Code: code, Message: message})
 	if err != nil {
 		panic(err)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 
-	_, writeError := w.Write(dataJson)
+	_, writeError := w.Write(dataJSON)
 	if writeError != nil {
 		panic(writeError)
 	}
