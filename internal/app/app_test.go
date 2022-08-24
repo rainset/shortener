@@ -131,3 +131,84 @@ func TestApp_GetURLHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestApp_SaveURLJsonHandler(t *testing.T) {
+
+	type request struct {
+		url  string
+		data string
+	}
+
+	type want struct {
+		code     int
+		response string
+	}
+
+	tests := []struct {
+		name    string
+		request request
+		want    want
+	}{
+		{
+			name: "POST - Добавление ссылки",
+			request: request{
+				url:  `http://localhost:8080/api/shorten`,
+				data: `{"url":"https://yandex.ru"}`,
+			},
+			want: want{
+				code:     201,
+				response: `{"url":"http://localhost:8080/e9db20b246fb7d3ffba1b2182fbcf167"}`,
+			},
+		},
+		{
+			name: "POST - Пустой запрос",
+			request: request{
+				url:  `http://localhost:8080/api/shorten`,
+				data: ``,
+			},
+			want: want{
+				code:     400,
+				response: `{"Code":400,"Message":"Only Json format requred in request body"}`,
+			},
+		},
+		{
+			name: "POST - неправильный Json формат запроса",
+			request: request{
+				url:  `http://localhost:8080/api/shorten`,
+				data: `testdata`,
+			},
+			want: want{
+				code:     400,
+				response: `{"Code":400,"Message":"Only Json format requred in request body"}`,
+			},
+		},
+	}
+	for _, tt := range tests {
+		// запускаем каждый тест
+		t.Run(tt.name, func(t *testing.T) {
+
+			// делаем тестовый http запрос
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", tt.request.url, bytes.NewBuffer([]byte(tt.request.data)))
+
+			application := New()
+			application.SaveURLJsonHandler(w, r)
+
+			result := w.Result()
+			result.Body.Close()
+
+			// проверяем код ответа
+			require.Equal(t, tt.want.code, result.StatusCode)
+
+			// Проверяем Content-Type
+			require.Equal(t, "application/json", result.Header.Get("Content-Type"))
+
+			data, err := io.ReadAll(result.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			require.Equal(t, tt.want.response, string(data))
+
+		})
+	}
+}
