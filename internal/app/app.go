@@ -111,8 +111,8 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 
 	_, writeError := w.Write(shortenJSON)
 	if writeError != nil {
