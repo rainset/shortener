@@ -16,7 +16,7 @@ type App struct {
 	urls map[string]string
 }
 
-type JsonData struct {
+type dataJSON struct {
 	URL string `json:"url"`
 }
 
@@ -94,7 +94,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 	}
 
-	value := JsonData{}
+	value := dataJSON{}
 	if err := json.Unmarshal(bodyBytes, &value); err != nil {
 		a.ShowJSONError(w, 400, "Only Json format requred in request body")
 		return
@@ -102,7 +102,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 	code := a.AddURL(value.URL)
 	shortenURL := a.GenerateShortenURL(code)
-	shortenData := JsonData{URL: shortenURL}
+	shortenData := dataJSON{URL: shortenURL}
 	shortenJSON, err := json.Marshal(shortenData)
 	if err != nil {
 		panic(err)
