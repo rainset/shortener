@@ -5,9 +5,27 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/require"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 )
+
+func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
+
+	req, err := http.NewRequest(method, ts.URL+path, nil)
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	return resp, string(respBody)
+}
 
 func TestApp_SaveURLHandler(t *testing.T) {
 	// определяем структуру теста
@@ -91,17 +109,17 @@ func TestApp_GetURLHandler(t *testing.T) {
 		// определяем все тесты
 		{
 			name:    "GET Просмотр ссылки",
-			request: "%s//e9db20b246fb7d3ffba1b2182fbcf167",
+			request: "/e9db20b246fb7d3ffba1b2182fbcf167",
 			want: want{
-				code:     307,
-				response: `https://yandex.ru`,
+				code: 200,
 			},
 		},
 		{
 			name:    "GET Просмотр несуществующей ссылки",
-			request: "%s/0000000000qq",
+			request: "/0000000000qq",
 			want: want{
-				code: 400,
+				code:     400,
+				response: "Bad Url\n",
 			},
 		},
 	}
@@ -111,26 +129,17 @@ func TestApp_GetURLHandler(t *testing.T) {
 			app := New()
 			app.AddURL("https://yandex.ru")
 
-			fmt.Println(app)
+			r := app.NewRouter()
+			ts := httptest.NewServer(r)
+			defer ts.Close()
 
-			// делаем тестовый http запрос
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", fmt.Sprintf(tt.request, app.Config.ServerBaseURL), nil)
+			resp, body := testRequest(t, ts, "GET", tt.request)
 
-			app.GetURLHandler(w, r)
-
-			res := w.Result()
-			defer res.Body.Close()
-
-			fmt.Println(res)
-
-			// проверяем код ответа
-			require.Equal(t, tt.want.code, res.StatusCode)
-
-			// получаем и проверяем тело запроса
-			_, err := io.ReadAll(res.Body)
-			if err != nil {
-				t.Fatal(err)
+			if tt.want.code != 0 {
+				require.Equal(t, tt.want.code, resp.StatusCode)
+			}
+			if tt.want.response != "" {
+				require.Equal(t, tt.want.response, body)
 			}
 		})
 	}

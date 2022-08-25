@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/caarlos0/env/v6"
+	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
@@ -40,8 +41,7 @@ func New() *App {
 		cfg.ServerBaseURL = "http://localhost:8080"
 	}
 
-	app := &App{urls: make(map[string]string), Config: cfg}
-	return app
+	return &App{urls: make(map[string]string), Config: cfg}
 }
 
 func (a *App) AddURL(value string) string {
@@ -59,12 +59,17 @@ func (a *App) GetURL(urlID string) string {
 	return a.urls[urlID]
 }
 
+func (a *App) NewRouter() chi.Router {
+	r := chi.NewRouter()
+	r.Get("/{id:[0-9a-z]+}", a.GetURLHandler)
+	r.Post("/api/shorten", a.SaveURLJSONHandler)
+	r.Post("/", a.SaveURLHandler)
+	r.Get("/{id:[0-9a-z]+}", a.GetURLHandler)
+	return r
+}
+
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	fmt.Println(vars)
-
-	urlID := vars["id"]
+	urlID := chi.URLParam(r, "id")
 	url := a.GetURL(urlID)
 
 	if url == "" {
