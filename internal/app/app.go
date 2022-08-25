@@ -5,19 +5,43 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/caarlos0/env/v6"
 	"github.com/gorilla/mux"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"sync"
 )
 
+type Config struct {
+	ServerAddress string `env:"SERVER_ADDRESS"`
+	ServerBaseURL string `env:"BASE_URL"`
+}
+
 type App struct {
 	sync.RWMutex
-	urls map[string]string
+	Config Config
+	Router *mux.Router
+	urls   map[string]string
 }
 
 func New() *App {
-	return &App{urls: make(map[string]string)}
+
+	var cfg Config
+	err := env.Parse(&cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if cfg.ServerAddress == "" {
+		cfg.ServerAddress = "localhost:8080"
+	}
+	if cfg.ServerBaseURL == "" {
+		cfg.ServerBaseURL = "http://localhost:8080"
+	}
+
+	app := &App{urls: make(map[string]string), Config: cfg}
+	return app
 }
 
 func (a *App) AddURL(value string) string {
@@ -37,6 +61,9 @@ func (a *App) GetURL(urlID string) string {
 
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
+	fmt.Println(vars)
+
 	urlID := vars["id"]
 	url := a.GetURL(urlID)
 
@@ -123,7 +150,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) GenerateShortenURL(shortenCode string) string {
-	return fmt.Sprintf("http://localhost:8080/%s", shortenCode)
+	return fmt.Sprintf("%s/%s", a.Config.ServerBaseURL, shortenCode)
 }
 
 func (a *App) ShowJSONError(w http.ResponseWriter, code int, message string) {

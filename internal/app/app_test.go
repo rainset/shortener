@@ -2,9 +2,9 @@ package app
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"io"
-	"net/http"
 	"net/http/httptest"
 	"testing"
 )
@@ -27,7 +27,7 @@ func TestApp_SaveURLHandler(t *testing.T) {
 			name: "POST Добавление ссылки",
 			want: want{
 				code:     201,
-				response: `http://localhost:8080/e9db20b246fb7d3ffba1b2182fbcf167`,
+				response: `%s/e9db20b246fb7d3ffba1b2182fbcf167`,
 				postData: `https://yandex.ru`,
 			},
 		},
@@ -43,7 +43,7 @@ func TestApp_SaveURLHandler(t *testing.T) {
 			name: "POST Добавление ссылки",
 			want: want{
 				code:     201,
-				response: `http://localhost:8080/e9db20b246fb7d3ffba1b2182fbcf167`,
+				response: `%s/e9db20b246fb7d3ffba1b2182fbcf167`,
 				postData: `https://yandex.ru`,
 			},
 		},
@@ -52,12 +52,13 @@ func TestApp_SaveURLHandler(t *testing.T) {
 		// запускаем каждый тест
 		t.Run(tt.name, func(t *testing.T) {
 
+			app := New()
+
 			// делаем тестовый http запрос
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "http://localhost:8080", bytes.NewBuffer([]byte(tt.want.postData)))
+			r := httptest.NewRequest("POST", app.Config.ServerBaseURL, bytes.NewBuffer([]byte(tt.want.postData)))
 
-			application := New()
-			application.SaveURLHandler(w, r)
+			app.SaveURLHandler(w, r)
 
 			res := w.Result()
 			defer res.Body.Close()
@@ -66,7 +67,6 @@ func TestApp_SaveURLHandler(t *testing.T) {
 			require.Equal(t, tt.want.code, res.StatusCode)
 
 			// получаем и проверяем тело запроса
-			defer res.Body.Close()
 			_, err := io.ReadAll(res.Body)
 			if err != nil {
 				t.Fatal(err)
@@ -91,7 +91,7 @@ func TestApp_GetURLHandler(t *testing.T) {
 		// определяем все тесты
 		{
 			name:    "GET Просмотр ссылки",
-			request: "http://localhost:8080/e9db20b246fb7d3ffba1b2182fbcf167",
+			request: "%s//e9db20b246fb7d3ffba1b2182fbcf167",
 			want: want{
 				code:     307,
 				response: `https://yandex.ru`,
@@ -99,7 +99,7 @@ func TestApp_GetURLHandler(t *testing.T) {
 		},
 		{
 			name:    "GET Просмотр несуществующей ссылки",
-			request: "http://localhost:8080/0000000000",
+			request: "%s/0000000000qq",
 			want: want{
 				code: 400,
 			},
@@ -108,23 +108,26 @@ func TestApp_GetURLHandler(t *testing.T) {
 	for _, tt := range tests {
 		// запускаем каждый тест
 		t.Run(tt.name, func(t *testing.T) {
+			app := New()
+			app.AddURL("https://yandex.ru")
+
+			fmt.Println(app)
 
 			// делаем тестовый http запрос
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", tt.request, nil)
+			r := httptest.NewRequest("GET", fmt.Sprintf(tt.request, app.Config.ServerBaseURL), nil)
 
-			app := New()
-			app.AddURL("https://yandex.ru")
 			app.GetURLHandler(w, r)
 
 			res := w.Result()
 			defer res.Body.Close()
 
+			fmt.Println(res)
+
 			// проверяем код ответа
-			//require.Equal(t, tt.want.code, res.StatusCode)
+			require.Equal(t, tt.want.code, res.StatusCode)
 
 			// получаем и проверяем тело запроса
-			defer res.Body.Close()
 			_, err := io.ReadAll(res.Body)
 			if err != nil {
 				t.Fatal(err)
@@ -153,7 +156,7 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 		{
 			name: "POST - Добавление ссылки",
 			request: request{
-				url:  `http://localhost:8080/api/shorten`,
+				url:  `%s/api/shorten`,
 				data: `{"url":"https://yandex.ru"}`,
 			},
 			want: want{
@@ -164,7 +167,7 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 		{
 			name: "POST - Пустой запрос",
 			request: request{
-				url:  `http://localhost:8080/api/shorten`,
+				url:  `%s/api/shorten`,
 				data: ``,
 			},
 			want: want{
@@ -175,7 +178,7 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 		{
 			name: "POST - неправильный Json формат запроса",
 			request: request{
-				url:  `http://localhost:8080/api/shorten`,
+				url:  `%s/api/shorten`,
 				data: `testdata`,
 			},
 			want: want{
@@ -187,13 +190,13 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 	for _, tt := range tests {
 		// запускаем каждый тест
 		t.Run(tt.name, func(t *testing.T) {
+			app := New()
 
 			// делаем тестовый http запрос
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", tt.request.url, bytes.NewBuffer([]byte(tt.request.data)))
+			r := httptest.NewRequest("POST", fmt.Sprintf(tt.request.url, app.Config.ServerBaseURL), bytes.NewBuffer([]byte(tt.request.data)))
 
-			application := New()
-			application.SaveURLJSONHandler(w, r)
+			app.SaveURLJSONHandler(w, r)
 
 			result := w.Result()
 			result.Body.Close()
@@ -212,36 +215,9 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 }
 
 func TestApp_ShowJSONError(t *testing.T) {
-
-	type args struct {
-		w       http.ResponseWriter
-		code    int
-		message string
-	}
-
 	w := httptest.NewRecorder()
-
-	tests := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "stringCode",
-			args: args{
-				w:       w,
-				code:    400,
-				message: "Only Json format required in request body",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			a := &App{}
-			a.ShowJSONError(tt.args.w, tt.args.code, tt.args.message)
-		})
-	}
+	a := &App{}
+	a.ShowJSONError(w, 400, "Only Json format required in request body")
 }
 
 func TestApp_GenerateShortenURL(t *testing.T) {
@@ -258,14 +234,15 @@ func TestApp_GenerateShortenURL(t *testing.T) {
 			args: args{
 				shortenCode: "tescode",
 			},
-			want: "http://localhost:8080/tescode",
+			want: "%s/tescode",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := &App{}
-			if got := a.GenerateShortenURL(tt.args.shortenCode); got != tt.want {
-				t.Errorf("GenerateShortenURL() = %v, want %v", got, tt.want)
+			app := New()
+			need := fmt.Sprintf(tt.want, app.Config.ServerBaseURL)
+			if got := app.GenerateShortenURL(tt.args.shortenCode); got != need {
+				t.Errorf("GenerateShortenURL() = %v, want %v", got, need)
 			}
 		})
 	}

@@ -7,18 +7,15 @@ import (
 	"net/http"
 )
 
-const addr = "localhost:8080"
-
 func main() {
-
 	application := app.New()
 
 	r := mux.NewRouter()
+	r.HandleFunc("/{id:[0-9a-z]+}", application.GetURLHandler).Methods("GET")
 	r.HandleFunc("/api/shorten", application.SaveURLJSONHandler).Methods("POST")
 	r.HandleFunc("/", application.SaveURLHandler).Methods("POST")
-	r.HandleFunc("/{id:[0-9a-z]+}", application.GetURLHandler).Methods("GET")
 	http.Handle("/", r)
 
-	log.Print("Listening...")
-	log.Fatal(http.ListenAndServe(addr, r))
+	log.Printf("Listening %s ...", application.Config.ServerAddress)
+	log.Fatal(http.ListenAndServe(application.Config.ServerAddress, r))
 }
