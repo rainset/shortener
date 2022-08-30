@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/gorilla/mux"
 	"github.com/rainset/shortener/internal/app/storage/file"
 	"io/ioutil"
@@ -101,7 +100,7 @@ func (a *App) GetURL(urlID string) string {
 
 func (a *App) NewRouter() chi.Router {
 	r := chi.NewRouter()
-	r.Use(middleware.Compress(5))
+	//r.Use(middleware.Compress(5))
 	r.Get("/{id:[0-9a-z]+}", a.GetURLHandler)
 	r.Post("/api/shorten", a.SaveURLJSONHandler)
 	r.Post("/", a.SaveURLHandler)
