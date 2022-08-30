@@ -127,8 +127,10 @@ func TestApp_GetURLHandler(t *testing.T) {
 		// запускаем каждый тест
 		t.Run(tt.name, func(t *testing.T) {
 			app := New()
-			app.AddURL("https://yandex.ru")
-
+			_, err := app.AddURL("https://yandex.ru")
+			if err != nil {
+				t.Error(err)
+			}
 			r := app.NewRouter()
 			ts := httptest.NewServer(r)
 			defer ts.Close()

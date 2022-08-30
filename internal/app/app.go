@@ -8,15 +8,18 @@ import (
 	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/mux"
+	"github.com/rainset/shortener/internal/app/storage/file"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"sync"
 )
 
 type Config struct {
-	ServerAddress string `env:"SERVER_ADDRESS"`
-	ServerBaseURL string `env:"BASE_URL"`
+	ServerAddress     string `env:"SERVER_ADDRESS"`
+	ServerBaseURL     string `env:"BASE_URL"`
+	ServerStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
 type App struct {
@@ -40,17 +43,55 @@ func New() *App {
 	if cfg.ServerBaseURL == "" {
 		cfg.ServerBaseURL = "http://localhost:8080"
 	}
+	//if cfg.ServerStoragePath == "" {
+	//	cfg.ServerStoragePath = "storage.log"
+	//}
 
-	return &App{urls: make(map[string]string), Config: cfg}
+	urls := make(map[string]string)
+
+	if cfg.ServerStoragePath != "" {
+		consumer, err := file.NewConsumer(cfg.ServerStoragePath)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		urls, err = consumer.RestoreStorage()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(urls)
+	}
+
+	return &App{urls: urls, Config: cfg}
 }
 
-func (a *App) AddURL(value string) string {
+func (a *App) AddURL(value string) (hash string, err error) {
 	a.RLock()
 	defer a.RUnlock()
-	binHash := md5.Sum([]byte(value))
-	hash := hex.EncodeToString(binHash[:])
+
+	urlValue, err := url.ParseRequestURI(value)
+	if err != nil {
+		hash = ""
+		return
+	}
+
+	binHash := md5.Sum([]byte(urlValue.String()))
+	hash = hex.EncodeToString(binHash[:])
 	a.urls[hash] = value
-	return hash
+
+	if a.Config.ServerStoragePath != "" {
+		producer, errF := file.NewProducer(a.Config.ServerStoragePath)
+		if errF != nil {
+			return
+		}
+		defer producer.Close()
+
+		requestData := &file.DataURL{Hash: hash, LongUrl: value}
+		if fileErr := producer.WriteURL(requestData); fileErr != nil {
+			return
+		}
+	}
+	return hash, err
 }
 
 func (a *App) GetURL(urlID string) string {
@@ -70,14 +111,14 @@ func (a *App) NewRouter() chi.Router {
 
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	urlID := chi.URLParam(r, "id")
-	url := a.GetURL(urlID)
+	urlValue := a.GetURL(urlID)
 
-	if url == "" {
+	if urlValue == "" {
 		http.Error(w, "Bad Url", 400)
 		return
 	}
 
-	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, urlValue, http.StatusTemporaryRedirect)
 }
 
 func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +133,13 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 	}
-	code := a.AddURL(string(bodyBytes))
+	code, err := a.AddURL(string(bodyBytes))
+
+	if err != nil {
+		http.Error(w, "incorrect url format", 400)
+		return
+	}
+
 	shortenURL := a.GenerateShortenURL(code)
 
 	w.WriteHeader(http.StatusCreated)
@@ -118,9 +165,6 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Body != nil {
 		bodyBytes, err = ioutil.ReadAll(r.Body)
-
-		fmt.Println(len(bodyBytes))
-
 		if err != nil || len(bodyBytes) == 0 {
 			a.ShowJSONError(w, 400, "Only Json format required in request body")
 			return
@@ -135,12 +179,18 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code := a.AddURL(value.URL)
+	code, err := a.AddURL(value.URL)
+	if err != nil {
+		http.Error(w, "incorrect url format", 400)
+		return
+	}
+
 	shortenURL := a.GenerateShortenURL(code)
 	shortenData := ShortenResponse{Result: shortenURL}
 	shortenJSON, err := json.Marshal(shortenData)
 	if err != nil {
-		panic(err)
+		http.Error(w, "json response error", 400)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
