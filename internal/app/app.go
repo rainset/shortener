@@ -101,7 +101,7 @@ func (a *App) GetURL(urlID string) string {
 
 func (a *App) NewRouter() chi.Router {
 	r := chi.NewRouter()
-	r.Use(middleware.Compress(5, "gzip"))
+	r.Use(middleware.Compress(5))
 	r.Get("/{id:[0-9a-z]+}", a.GetURLHandler)
 	r.Post("/api/shorten", a.SaveURLJSONHandler)
 	r.Post("/", a.SaveURLHandler)
@@ -142,7 +142,6 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	shortenURL := a.GenerateShortenURL(code)
 
-	w.Header().Set("Accept-Encoding", "gzip")
 	w.WriteHeader(http.StatusCreated)
 
 	_, writeError := w.Write([]byte(shortenURL))
@@ -197,7 +196,6 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "json response error", 400)
 		return
 	}
-	w.Header().Set("Accept-Encoding", "gzip")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
