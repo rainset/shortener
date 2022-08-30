@@ -101,7 +101,7 @@ func (a *App) GetURL(urlID string) string {
 func (a *App) NewRouter() chi.Router {
 
 	r := chi.NewRouter()
-	r.Use(a.GzipHandle)
+	//r.Use(a.GzipHandle)
 	//r.Use(middleware.Compress(5, "/*"))
 	r.Get("/{id:[0-9a-z]+}", a.GetURLHandler)
 	r.Post("/api/shorten", a.SaveURLJSONHandler)
