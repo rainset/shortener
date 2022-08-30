@@ -86,7 +86,7 @@ func (a *App) AddURL(value string) (hash string, err error) {
 		}
 		defer producer.Close()
 
-		requestData := &file.DataURL{Hash: hash, LongUrl: value}
+		requestData := &file.DataURL{Hash: hash, LongURL: value}
 		if fileErr := producer.WriteURL(requestData); fileErr != nil {
 			return
 		}

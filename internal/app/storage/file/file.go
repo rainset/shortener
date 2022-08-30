@@ -9,7 +9,7 @@ import (
 
 type DataURL struct {
 	Hash    string `json:"hash"`
-	LongUrl string `json:"long_url"`
+	LongURL string `json:"long_url"`
 }
 
 type producer struct {
@@ -69,7 +69,7 @@ func (c *consumer) RestoreStorage() (map[string]string, error) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		readedURLs[dataURL.Hash] = dataURL.LongUrl
+		readedURLs[dataURL.Hash] = dataURL.LongURL
 	}
 
 	return readedURLs, nil
