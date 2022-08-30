@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
@@ -47,6 +48,21 @@ func New() *App {
 	//	cfg.ServerStoragePath = "storage.log"
 	//}
 
+	flagA := flag.String("a", "", "set env SERVER_ADDRESS")
+	flagB := flag.String("b", "", "set env BASE_URL")
+	flagF := flag.String("f", "", "set env FILE_STORAGE_PATH")
+	flag.Parse()
+
+	if *flagA != "" {
+		cfg.ServerAddress = *flagA
+	}
+	if *flagB != "" {
+		cfg.ServerBaseURL = *flagB
+	}
+	if *flagF != "" {
+		cfg.ServerStoragePath = *flagF
+	}
+
 	urls := make(map[string]string)
 
 	if cfg.ServerStoragePath != "" {
@@ -54,12 +70,10 @@ func New() *App {
 		if err != nil {
 			log.Fatal(err)
 		}
-
 		urls, err = consumer.RestoreStorage()
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println(urls)
 	}
 
 	return &App{urls: urls, Config: cfg}
