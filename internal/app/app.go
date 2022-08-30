@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/mux"
 	"github.com/rainset/shortener/internal/app/storage/file"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -144,12 +145,15 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	shortenURL := a.GenerateShortenURL(code)
 
 	w.WriteHeader(http.StatusCreated)
-
-	_, writeError := w.Write([]byte(shortenURL))
-	if writeError != nil {
-		http.Error(w, "response body error", 400)
+	_, err = io.WriteString(w, shortenURL)
+	if err != nil {
 		return
 	}
+	//_, writeError := w.Write([]byte(shortenURL))
+	//if writeError != nil {
+	//	http.Error(w, "response body error", 400)
+	//	return
+	//}
 
 }
 func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
