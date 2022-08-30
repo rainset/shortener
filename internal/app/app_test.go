@@ -136,7 +136,7 @@ func TestApp_GetURLHandler(t *testing.T) {
 			defer ts.Close()
 
 			resp, body := testRequest(t, ts, "GET", tt.request)
-
+			defer resp.Body.Close()
 			if tt.want.code != 0 {
 				require.Equal(t, tt.want.code, resp.StatusCode)
 			}
