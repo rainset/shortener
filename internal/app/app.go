@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/caarlos0/env/v6"
 	"github.com/go-chi/chi/v5"
@@ -18,9 +17,9 @@ import (
 )
 
 type Config struct {
-	ServerAddress     string `env:"SERVER_ADDRESS"`
-	ServerBaseURL     string `env:"BASE_URL"`
-	ServerStoragePath string `env:"FILE_STORAGE_PATH"`
+	ServerAddress         string `env:"SERVER_ADDRESS"`
+	ServerBaseURL         string `env:"BASE_URL"`
+	ServerFileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
 type App struct {
@@ -48,25 +47,10 @@ func New() *App {
 	//	cfg.ServerStoragePath = "storage.log"
 	//}
 
-	flagA := flag.String("a", "", "set env SERVER_ADDRESS")
-	flagB := flag.String("b", "", "set env BASE_URL")
-	flagF := flag.String("f", "", "set env FILE_STORAGE_PATH")
-	flag.Parse()
-
-	if *flagA != "" {
-		cfg.ServerAddress = *flagA
-	}
-	if *flagB != "" {
-		cfg.ServerBaseURL = *flagB
-	}
-	if *flagF != "" {
-		cfg.ServerStoragePath = *flagF
-	}
-
 	urls := make(map[string]string)
 
-	if cfg.ServerStoragePath != "" {
-		consumer, err := file.NewConsumer(cfg.ServerStoragePath)
+	if cfg.ServerFileStoragePath != "" {
+		consumer, err := file.NewConsumer(cfg.ServerFileStoragePath)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -93,8 +77,8 @@ func (a *App) AddURL(value string) (hash string, err error) {
 	hash = hex.EncodeToString(binHash[:])
 	a.urls[hash] = value
 
-	if a.Config.ServerStoragePath != "" {
-		producer, errF := file.NewProducer(a.Config.ServerStoragePath)
+	if a.Config.ServerFileStoragePath != "" {
+		producer, errF := file.NewProducer(a.Config.ServerFileStoragePath)
 		if errF != nil {
 			return
 		}
