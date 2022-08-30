@@ -135,18 +135,15 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	code, err := a.AddURL(string(bodyBytes))
 
-	fmt.Println("code:", code)
-	fmt.Println("err:", err)
-	fmt.Println("bodyBytes:", string(bodyBytes))
-
 	if err != nil {
-		http.Error(w, "incorrect url format", 400)
+		http.Error(w, fmt.Sprintf("incorrect url format, code: %s body: %s", code, string(bodyBytes)), 400)
 		return
 	}
 
 	shortenURL := a.GenerateShortenURL(code)
 
 	w.Header().Set("Accept-Encoding", "gzip")
+	w.Header().Set("Content-Encoding", "gzip")
 	w.WriteHeader(http.StatusCreated)
 
 	_, writeError := w.Write([]byte(shortenURL))
@@ -202,6 +199,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Accept-Encoding", "gzip")
+	w.Header().Set("Content-Encoding", "gzip")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
