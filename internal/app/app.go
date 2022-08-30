@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
 	"sync"
 )
 
@@ -67,13 +66,13 @@ func (a *App) AddURL(value string) (hash string, err error) {
 	a.RLock()
 	defer a.RUnlock()
 
-	urlValue, err := url.ParseRequestURI(value)
-	if err != nil {
-		hash = ""
-		return
-	}
+	//urlValue, err := url.ParseRequestURI(value)
+	//if err != nil {
+	//	hash = ""
+	//	return
+	//}
 
-	binHash := md5.Sum([]byte(urlValue.String()))
+	binHash := md5.Sum([]byte(value))
 	hash = hex.EncodeToString(binHash[:])
 	a.urls[hash] = value
 
