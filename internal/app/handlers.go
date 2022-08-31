@@ -63,7 +63,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	//if err != nil {
 	//	return
 	//}
-
+	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 
 	_, writeError := w.Write([]byte(shortenURL))
