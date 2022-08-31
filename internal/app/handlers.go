@@ -1,11 +1,11 @@
 package app
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"io"
 	"io/ioutil"
 	"net/http"
 )
@@ -35,28 +35,15 @@ func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	var bodyBytes []byte
 	var err error
-	var reader io.Reader
 
-	if r.Body != nil {
-		switch r.Header.Get("Content-Encoding") {
-		case "gzip":
-			reader, err := gzip.NewReader(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			defer reader.Close()
-		default:
-			reader = r.Body
-		}
+	bodyBytes, err = readBodyBytes(r)
 
-		bodyBytes, err = ioutil.ReadAll(reader)
-		if err != nil || len(bodyBytes) == 0 {
-			http.Error(w, "Body reading error", 400)
-			return
-		}
-		defer r.Body.Close()
+	if err != nil || len(bodyBytes) == 0 {
+		http.Error(w, "Body reading error", 400)
+		return
 	}
+	defer r.Body.Close()
+
 	code, err := a.AddURL(string(bodyBytes))
 
 	if err != nil {
@@ -154,5 +141,32 @@ func (a *App) ShowJSONError(w http.ResponseWriter, code int, message string) {
 	_, writeError := w.Write(data)
 	if writeError != nil {
 		panic(writeError)
+	}
+}
+
+func readBodyBytes(r *http.Request) ([]byte, error) {
+	// Read body
+	bodyBytes, readErr := ioutil.ReadAll(r.Body)
+	if readErr != nil {
+		return nil, readErr
+	}
+	defer r.Body.Close()
+
+	// GZIP decode
+	if len(r.Header["Content-Encoding"]) > 0 && r.Header["Content-Encoding"][0] == "gzip" {
+		r, gzErr := gzip.NewReader(ioutil.NopCloser(bytes.NewBuffer(bodyBytes)))
+		if gzErr != nil {
+			return nil, gzErr
+		}
+		defer r.Close()
+
+		bb, err2 := ioutil.ReadAll(r)
+		if err2 != nil {
+			return nil, err2
+		}
+		return bb, nil
+	} else {
+		// Not compressed
+		return bodyBytes, nil
 	}
 }
