@@ -77,7 +77,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	if r.Body != nil {
-		bodyBytes, err = ioutil.ReadAll(r.Body)
+		bodyBytes, err = readBodyBytes(r)
 		if err != nil || len(bodyBytes) == 0 {
 			a.ShowJSONError(w, 400, "Only Json format required in request body")
 			return
