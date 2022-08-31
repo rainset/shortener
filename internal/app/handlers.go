@@ -1,9 +1,11 @@
 package app
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"io"
 	"io/ioutil"
 	"net/http"
 )
@@ -13,6 +15,9 @@ func (a *App) NewRouter() *mux.Router {
 	r.HandleFunc("/{id:[0-9a-z]+}", a.GetURLHandler).Methods("GET")
 	r.HandleFunc("/api/shorten", a.SaveURLJSONHandler).Methods("POST")
 	r.HandleFunc("/", a.SaveURLHandler).Methods("POST")
+
+	//handlers.CompressHandler(r)
+
 	return r
 }
 
@@ -32,8 +37,26 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	if r.Body != nil {
-		bodyBytes, err = ioutil.ReadAll(r.Body)
+
+		var reader io.Reader
+		switch r.Header.Get("Content-Encoding") {
+		case "gzip":
+			reader, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer reader.Close()
+		default:
+			fmt.Println("default")
+			reader = r.Body
+		}
+
+		bodyBytes, err = ioutil.ReadAll(reader)
 		if err != nil || len(bodyBytes) == 0 {
+
+			fmt.Println(err, bodyBytes, string(bodyBytes))
+
 			http.Error(w, "Body reading error", 400)
 			return
 		}
@@ -48,21 +71,6 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	shortenURL := a.GenerateShortenURL(code)
 
-	//w.Header().Set("Content-Encoding", "gzip")
-	//writer, err := gzip.NewWriterLevel(w, gzip.BestCompression)
-	//if err != nil {
-	//	// Your error handling
-	//	return
-	//}
-	//
-	//defer writer.Close()
-	//
-	//writer.Write([]byte(shortenURL))
-
-	//_, err = io.WriteString(w, shortenURL)
-	//if err != nil {
-	//	return
-	//}
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 
