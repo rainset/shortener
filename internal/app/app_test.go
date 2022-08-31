@@ -106,20 +106,19 @@ func TestApp_GetURLHandler(t *testing.T) {
 		request string
 		want    want
 	}{
-		// определяем все тесты
-		{
-			name:    "GET Просмотр ссылки",
-			request: "/e9db20b246fb7d3ffba1b2182fbcf167",
-			want: want{
-				code: 200,
-			},
-		},
 		{
 			name:    "GET Просмотр несуществующей ссылки",
 			request: "/0000000000qq",
 			want: want{
 				code:     400,
 				response: "Bad Url\n",
+			},
+		},
+		{
+			name:    "GET Просмотр ссылки",
+			request: "/e9db20b246fb7d3ffba1b2182fbcf167",
+			want: want{
+				code: 200,
 			},
 		},
 	}
