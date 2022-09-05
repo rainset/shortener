@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rainset/shortener/internal/app/storage/file"
 	"log"
+	"net/url"
 	"sync"
 )
 
@@ -17,7 +18,7 @@ type Config struct {
 }
 
 type App struct {
-	sync.RWMutex
+	mutex  sync.RWMutex
 	Config Config
 	Router *mux.Router
 	urls   map[string]string
@@ -58,36 +59,35 @@ func New() *App {
 }
 
 func (a *App) AddURL(value string) (hash string, err error) {
-	a.RLock()
-	defer a.RUnlock()
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
 
-	//urlValue, err := url.ParseRequestURI(value)
-	//if err != nil {
-	//	hash = ""
-	//	return
-	//}
+	urlValue, err := url.ParseRequestURI(value)
+	if err != nil {
+		return "", err
+	}
 
-	binHash := md5.Sum([]byte(value))
+	binHash := md5.Sum([]byte(urlValue.String()))
 	hash = hex.EncodeToString(binHash[:])
 	a.urls[hash] = value
 
 	if a.Config.ServerFileStoragePath != "" {
 		producer, errF := file.NewProducer(a.Config.ServerFileStoragePath)
 		if errF != nil {
-			return
+			return hash, errF
 		}
 		defer producer.Close()
 
 		requestData := &file.DataURL{Hash: hash, LongURL: value}
 		if fileErr := producer.WriteURL(requestData); fileErr != nil {
-			return
+			return hash, fileErr
 		}
 	}
 	return hash, err
 }
 
 func (a *App) GetURL(urlID string) string {
-	a.RLock()
-	defer a.RUnlock()
+	a.mutex.RLock()
+	defer a.mutex.RUnlock()
 	return a.urls[urlID]
 }

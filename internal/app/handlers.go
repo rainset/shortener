@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -25,7 +25,7 @@ func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	urlValue := a.GetURL(vars["id"])
 	if urlValue == "" {
-		http.Error(w, "Bad Url", 400)
+		http.Error(w, "Bad Url", http.StatusBadRequest)
 		return
 	}
 
@@ -39,7 +39,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err = readBodyBytes(r)
 
 	if err != nil || len(bodyBytes) == 0 {
-		http.Error(w, "Body reading error", 400)
+		http.Error(w, "Body reading error", http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
@@ -47,7 +47,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	code, err := a.AddURL(string(bodyBytes))
 
 	if err != nil {
-		http.Error(w, fmt.Sprintf("incorrect url format, code: %s body: %s", code, string(bodyBytes)), 400)
+		http.Error(w, fmt.Sprintf("incorrect url format, code: %s body: %s", code, string(bodyBytes)), http.StatusBadRequest)
 		return
 	}
 
@@ -58,7 +58,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, writeError := w.Write([]byte(shortenURL))
 	if writeError != nil {
-		http.Error(w, "response body error", 400)
+		http.Error(w, "response body error", http.StatusBadRequest)
 		return
 	}
 
@@ -79,7 +79,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Body != nil {
 		bodyBytes, err = readBodyBytes(r)
 		if err != nil || len(bodyBytes) == 0 {
-			a.ShowJSONError(w, 400, "Only Json format required in request body")
+			a.ShowJSONError(w, http.StatusBadRequest, "Only Json format required in request body")
 			return
 		}
 
@@ -88,7 +88,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 	value := ShortenRequest{}
 	if err := json.Unmarshal(bodyBytes, &value); err != nil {
-		a.ShowJSONError(w, 400, "Only Json format required in request body")
+		a.ShowJSONError(w, http.StatusBadRequest, "Only Json format required in request body")
 		return
 	}
 
@@ -98,7 +98,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("err:", err)
 
 	if err != nil {
-		http.Error(w, "incorrect url format", 400)
+		http.Error(w, "incorrect url format", http.StatusBadRequest)
 		return
 	}
 
@@ -106,7 +106,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 	shortenData := ShortenResponse{Result: shortenURL}
 	shortenJSON, err := json.Marshal(shortenData)
 	if err != nil {
-		http.Error(w, "json response error", 400)
+		http.Error(w, "json response error", http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -114,7 +114,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, writeError := w.Write(shortenJSON)
 	if writeError != nil {
-		http.Error(w, "response body error", 400)
+		http.Error(w, "response body error", http.StatusBadRequest)
 		return
 	}
 
@@ -146,7 +146,7 @@ func (a *App) ShowJSONError(w http.ResponseWriter, code int, message string) {
 
 func readBodyBytes(r *http.Request) ([]byte, error) {
 	// Read body
-	bodyBytes, readErr := ioutil.ReadAll(r.Body)
+	bodyBytes, readErr := io.ReadAll(r.Body)
 	if readErr != nil {
 		return nil, readErr
 	}
@@ -154,13 +154,13 @@ func readBodyBytes(r *http.Request) ([]byte, error) {
 
 	// GZIP decode
 	if len(r.Header["Content-Encoding"]) > 0 && r.Header["Content-Encoding"][0] == "gzip" {
-		r, gzErr := gzip.NewReader(ioutil.NopCloser(bytes.NewBuffer(bodyBytes)))
+		r, gzErr := gzip.NewReader(io.NopCloser(bytes.NewBuffer(bodyBytes)))
 		if gzErr != nil {
 			return nil, gzErr
 		}
 		defer r.Close()
 
-		bb, err2 := ioutil.ReadAll(r)
+		bb, err2 := io.ReadAll(r)
 		if err2 != nil {
 			return nil, err2
 		}

@@ -1,8 +1,8 @@
 package file
 
 import (
-	"bufio"
 	"encoding/json"
+	"io"
 	"log"
 	"os"
 )
@@ -61,16 +61,15 @@ func (c *consumer) Close() error {
 }
 
 func (c *consumer) RestoreStorage() (map[string]string, error) {
-	scanner := bufio.NewScanner(c.file)
 	readedURLs := make(map[string]string)
-	for scanner.Scan() {
+	for {
 		dataURL := &DataURL{}
-		err := json.Unmarshal([]byte(scanner.Text()), dataURL)
-		if err != nil {
+		if err := c.decoder.Decode(&dataURL); err == io.EOF {
+			break
+		} else if err != nil {
 			log.Fatal(err)
 		}
 		readedURLs[dataURL.Hash] = dataURL.LongURL
 	}
-
 	return readedURLs, nil
 }
