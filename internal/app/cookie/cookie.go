@@ -47,7 +47,6 @@ func Get(w http.ResponseWriter, r *http.Request, cookieName string) (value strin
 		if err = s.Decode(cookieName, cookie.Value, &value); err == nil {
 			return value[cookieName], nil
 		}
-		return "", fmt.Errorf("Пустой куки")
 	}
 	return "", err
 }
