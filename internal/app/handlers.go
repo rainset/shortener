@@ -69,7 +69,7 @@ func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
 
 	_, writeError := w.Write([]byte(data))
 	if writeError != nil {
