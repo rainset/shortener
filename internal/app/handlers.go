@@ -42,7 +42,7 @@ func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println(userID, err)
 	fmt.Println(a.userHistoryURLs)
-	if err != nil || len(a.userHistoryURLs[userID]) == 0 {
+	if err != nil || len(userID) == 0 || len(a.userHistoryURLs[userID]) == 0 {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNoContent)
@@ -76,14 +76,6 @@ func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "response body error", http.StatusBadRequest)
 		return
 	}
-	//fmt.Println(list)
-	//
-	//data, err := json.Marshal(ErrorResponse{Code: code, Message: message})
-	//if err != nil {
-	//	panic(err)
-	//}
-	//w.Header().Set("Content-Type", "application/json")
-
 }
 
 func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +104,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(cookieuserID) == 0 {
 		cookie.Set(w, r, "userID", generateduserID)
+		cookieuserID = generateduserID
 	}
 
 	if err := a.AddUserHistoryURL(cookieuserID, code); err != nil {
