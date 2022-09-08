@@ -1,10 +1,9 @@
 package app
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"github.com/caarlos0/env/v6"
 	"github.com/gorilla/mux"
+	"github.com/rainset/shortener/internal/app/helper"
 	"github.com/rainset/shortener/internal/app/storage/file"
 	"log"
 	"net/url"
@@ -15,13 +14,15 @@ type Config struct {
 	ServerAddress         string `env:"SERVER_ADDRESS"`
 	ServerBaseURL         string `env:"BASE_URL"`
 	ServerFileStoragePath string `env:"FILE_STORAGE_PATH"`
+	AppKey                string
 }
 
 type App struct {
-	mutex  sync.RWMutex
-	Config Config
-	Router *mux.Router
-	urls   map[string]string
+	mutex           sync.RWMutex
+	Config          Config
+	Router          *mux.Router
+	urls            map[string]string
+	userHistoryURLs map[string][]string
 }
 
 func New() *App {
@@ -38,6 +39,10 @@ func New() *App {
 	if cfg.ServerBaseURL == "" {
 		cfg.ServerBaseURL = "http://localhost:8080"
 	}
+
+	////cfg.AppKey = "49a8aca82c132d8d1f430e32be1e6ff3"
+	//cfg.AppKey = "1234567890123456789012345678901234567890"
+
 	//if cfg.ServerStoragePath == "" {
 	//	cfg.ServerStoragePath = "storage.log"
 	//}
@@ -55,7 +60,13 @@ func New() *App {
 		}
 	}
 
-	return &App{urls: urls, Config: cfg}
+	userHistoryURLs := make(map[string][]string)
+
+	return &App{
+		Config:          cfg,
+		urls:            urls,
+		userHistoryURLs: userHistoryURLs,
+	}
 }
 
 func (a *App) AddURL(value string) (hash string, err error) {
@@ -67,9 +78,8 @@ func (a *App) AddURL(value string) (hash string, err error) {
 		return "", err
 	}
 
-	binHash := md5.Sum([]byte(urlValue.String()))
-	hash = hex.EncodeToString(binHash[:])
-	a.urls[hash] = value
+	hash = helper.GenerateToken(8)
+	a.urls[hash] = urlValue.String()
 
 	if a.Config.ServerFileStoragePath != "" {
 		producer, errF := file.NewProducer(a.Config.ServerFileStoragePath)
@@ -84,6 +94,13 @@ func (a *App) AddURL(value string) (hash string, err error) {
 		}
 	}
 	return hash, err
+}
+
+func (a *App) AddUserHistoryURL(userId, hash string) (err error) {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+	a.userHistoryURLs[userId] = append(a.userHistoryURLs[userId], hash)
+	return nil
 }
 
 func (a *App) GetURL(urlID string) string {

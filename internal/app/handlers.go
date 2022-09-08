@@ -6,18 +6,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/rainset/shortener/internal/app/cookie"
 	"io"
 	"net/http"
 )
 
 func (a *App) NewRouter() *mux.Router {
 	r := mux.NewRouter()
-	r.HandleFunc("/{id:[0-9a-z]+}", a.GetURLHandler).Methods("GET")
+	r.HandleFunc("/{id:[0-9a-zA-Z+]+}", a.GetURLHandler).Methods("GET")
 	r.HandleFunc("/api/shorten", a.SaveURLJSONHandler).Methods("POST")
+	r.HandleFunc("/api/user/urls", a.UserURLListHandler).Methods("GET")
 	r.HandleFunc("/", a.SaveURLHandler).Methods("POST")
-
-	//handlers.CompressHandler(r)
-
 	return r
 }
 
@@ -32,10 +31,61 @@ func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, urlValue, http.StatusTemporaryRedirect)
 }
 
+func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
+
+	type ListURL struct {
+		ShortUrl    string `json:"short_url"`
+		OriginalUrl string `json:"original_url"`
+	}
+
+	userId, err := cookie.Get(w, r, "userId")
+
+	fmt.Println(userId, err)
+	fmt.Println(a.userHistoryURLs)
+	if err != nil || len(a.userHistoryURLs[userId]) == 0 {
+		http.Error(w, "StatusNoContent", http.StatusNoContent)
+		return
+	}
+	list := make([]ListURL, 0)
+
+	for _, shortHashURL := range a.userHistoryURLs[userId] {
+
+		originalUrl := a.urls[shortHashURL]
+
+		if len(shortHashURL) == 0 || len(originalUrl) == 0 {
+			continue
+		}
+
+		shortUrl := fmt.Sprintf("%s/%s", a.Config.ServerBaseURL, shortHashURL)
+		list = append(list, ListURL{ShortUrl: shortUrl, OriginalUrl: originalUrl})
+	}
+
+	data, err := json.Marshal(list)
+	if err != nil {
+		panic(err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	_, writeError := w.Write([]byte(data))
+	if writeError != nil {
+		http.Error(w, "response body error", http.StatusBadRequest)
+		return
+	}
+	//fmt.Println(list)
+	//
+	//data, err := json.Marshal(ErrorResponse{Code: code, Message: message})
+	//if err != nil {
+	//	panic(err)
+	//}
+	//w.Header().Set("Content-Type", "application/json")
+
+}
+
 func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	var bodyBytes []byte
 	var err error
-
 	bodyBytes, err = readBodyBytes(r)
 
 	if err != nil || len(bodyBytes) == 0 {
@@ -45,9 +95,24 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	code, err := a.AddURL(string(bodyBytes))
-
 	if err != nil {
 		http.Error(w, fmt.Sprintf("incorrect url format, code: %s body: %s", code, string(bodyBytes)), http.StatusBadRequest)
+		return
+	}
+
+	generatedUserId := cookie.GenerateUniqueUserId()
+
+	var cookieUserId string
+	cookieUserId, err = cookie.Get(w, r, "userId")
+	if err != nil {
+		fmt.Println(err)
+	}
+	if len(cookieUserId) == 0 {
+		cookie.Set(w, r, "userId", generatedUserId)
+	}
+
+	if err := a.AddUserHistoryURL(cookieUserId, code); err != nil {
+		http.Error(w, "AddUserHistoryURL error", http.StatusBadRequest)
 		return
 	}
 
