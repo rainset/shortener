@@ -34,30 +34,33 @@ func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
 
 	type ListURL struct {
-		ShortUrl    string `json:"short_url"`
-		OriginalUrl string `json:"original_url"`
+		ShortURL    string `json:"short_url"`
+		OriginalURL string `json:"original_url"`
 	}
 
-	userId, err := cookie.Get(w, r, "userId")
+	userID, err := cookie.Get(w, r, "userID")
 
-	fmt.Println(userId, err)
+	fmt.Println(userID, err)
 	fmt.Println(a.userHistoryURLs)
-	if err != nil || len(a.userHistoryURLs[userId]) == 0 {
-		http.Error(w, "StatusNoContent", http.StatusNoContent)
+	if err != nil || len(a.userHistoryURLs[userID]) == 0 {
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNoContent)
+
 		return
 	}
 	list := make([]ListURL, 0)
 
-	for _, shortHashURL := range a.userHistoryURLs[userId] {
+	for _, shortHashURL := range a.userHistoryURLs[userID] {
 
-		originalUrl := a.urls[shortHashURL]
+		OriginalURL := a.urls[shortHashURL]
 
-		if len(shortHashURL) == 0 || len(originalUrl) == 0 {
+		if len(shortHashURL) == 0 || len(OriginalURL) == 0 {
 			continue
 		}
 
-		shortUrl := fmt.Sprintf("%s/%s", a.Config.ServerBaseURL, shortHashURL)
-		list = append(list, ListURL{ShortUrl: shortUrl, OriginalUrl: originalUrl})
+		ShortURL := fmt.Sprintf("%s/%s", a.Config.ServerBaseURL, shortHashURL)
+		list = append(list, ListURL{ShortURL: ShortURL, OriginalURL: OriginalURL})
 	}
 
 	data, err := json.Marshal(list)
@@ -100,18 +103,18 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	generatedUserId := cookie.GenerateUniqueUserId()
+	generateduserID := cookie.GenerateUniqueuserID()
 
-	var cookieUserId string
-	cookieUserId, err = cookie.Get(w, r, "userId")
+	var cookieuserID string
+	cookieuserID, err = cookie.Get(w, r, "userID")
 	if err != nil {
 		fmt.Println(err)
 	}
-	if len(cookieUserId) == 0 {
-		cookie.Set(w, r, "userId", generatedUserId)
+	if len(cookieuserID) == 0 {
+		cookie.Set(w, r, "userID", generateduserID)
 	}
 
-	if err := a.AddUserHistoryURL(cookieUserId, code); err != nil {
+	if err := a.AddUserHistoryURL(cookieuserID, code); err != nil {
 		http.Error(w, "AddUserHistoryURL error", http.StatusBadRequest)
 		return
 	}

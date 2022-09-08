@@ -96,10 +96,10 @@ func (a *App) AddURL(value string) (hash string, err error) {
 	return hash, err
 }
 
-func (a *App) AddUserHistoryURL(userId, hash string) (err error) {
+func (a *App) AddUserHistoryURL(userID, hash string) (err error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	a.userHistoryURLs[userId] = append(a.userHistoryURLs[userId], hash)
+	a.userHistoryURLs[userID] = append(a.userHistoryURLs[userID], hash)
 	return nil
 }
 

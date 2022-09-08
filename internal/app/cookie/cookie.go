@@ -16,7 +16,7 @@ var hashKey = []byte("49a8aca82c132d8d1f430e32be1e6ff3")
 var blockKey = []byte("49a8aca82c132d8d1f430e32be1e6ff2")
 var s = securecookie.New(hashKey, blockKey)
 
-func GenerateUniqueUserId() string {
+func GenerateUniqueuserID() string {
 	now := time.Now()
 	sec := now.Unix()
 	rnd, _ := helper.GenerateRandom(32)
