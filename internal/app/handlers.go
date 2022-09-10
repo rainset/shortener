@@ -3,9 +3,11 @@ package app
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rainset/shortener/internal/app/cookie"
 	"io"
 	"net/http"
@@ -13,11 +15,24 @@ import (
 
 func (a *App) NewRouter() *mux.Router {
 	r := mux.NewRouter()
+	r.HandleFunc("/ping", a.PingHandler).Methods("GET")
 	r.HandleFunc("/{id:[0-9a-zA-Z+]+}", a.GetURLHandler).Methods("GET")
 	r.HandleFunc("/api/shorten", a.SaveURLJSONHandler).Methods("POST")
 	r.HandleFunc("/api/user/urls", a.UserURLListHandler).Methods("GET")
 	r.HandleFunc("/", a.SaveURLHandler).Methods("POST")
 	return r
+}
+
+func (a *App) PingHandler(w http.ResponseWriter, r *http.Request) {
+
+	conn, err := pgxpool.Connect(context.Background(), a.Config.DatabaseDSN)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	defer conn.Close()
 }
 
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
@@ -179,10 +194,6 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-}
-
-func (a *App) GenerateShortenURL(shortenCode string) string {
-	return fmt.Sprintf("%s/%s", a.Config.ServerBaseURL, shortenCode)
 }
 
 func (a *App) ShowJSONError(w http.ResponseWriter, code int, message string) {

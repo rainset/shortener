@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"github.com/caarlos0/env/v6"
 	"github.com/gorilla/mux"
 	"github.com/rainset/shortener/internal/app/helper"
@@ -14,6 +15,7 @@ type Config struct {
 	ServerAddress         string `env:"SERVER_ADDRESS"`
 	ServerBaseURL         string `env:"BASE_URL"`
 	ServerFileStoragePath string `env:"FILE_STORAGE_PATH"`
+	DatabaseDSN           string `env:"DATABASE_DSN"`
 	AppKey                string
 }
 
@@ -107,4 +109,8 @@ func (a *App) GetURL(urlID string) string {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
 	return a.urls[urlID]
+}
+
+func (a *App) GenerateShortenURL(shortenCode string) string {
+	return fmt.Sprintf("%s/%s", a.Config.ServerBaseURL, shortenCode)
 }

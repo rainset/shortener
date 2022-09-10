@@ -13,12 +13,14 @@ func (a *App) getStringFlag(name string) string {
 }
 
 func (a *App) InitFlags() {
-	var flagA, flagB, flagF string
+	var flagA, flagB, flagF, flagD string
 	a.regStringVar(&flagA, "a", a.Config.ServerAddress, "set env SERVER_ADDRESS")
 	a.regStringVar(&flagB, "b", a.Config.ServerBaseURL, "set env BASE_URL")
 	a.regStringVar(&flagF, "f", a.Config.ServerFileStoragePath, "set env FILE_STORAGE_PATH")
+	a.regStringVar(&flagD, "d", a.Config.DatabaseDSN, "set env DATABASE_DSN")
 	flag.Parse()
 	a.Config.ServerAddress = a.getStringFlag("a")
 	a.Config.ServerBaseURL = a.getStringFlag("b")
 	a.Config.ServerFileStoragePath = a.getStringFlag("f")
+	a.Config.DatabaseDSN = a.getStringFlag("d")
 }
