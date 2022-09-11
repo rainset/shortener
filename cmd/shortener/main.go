@@ -12,6 +12,7 @@ func main() {
 
 	application := app.New()
 	application.InitFlags()
+
 	r := application.NewRouter()
 	http.Handle("/", r)
 

@@ -1,11 +1,9 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"github.com/caarlos0/env/v6"
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v4"
 	"github.com/rainset/shortener/internal/app/helper"
 	"github.com/rainset/shortener/internal/app/storage/file"
 	"log"
@@ -25,7 +23,6 @@ type App struct {
 	mutex           sync.RWMutex
 	Config          Config
 	Router          *mux.Router
-	db              *pgx.Conn
 	urls            map[string]string
 	userHistoryURLs map[string][]string
 }
@@ -46,7 +43,7 @@ func New() *App {
 	}
 
 	if cfg.DatabaseDSN == "" {
-		cfg.DatabaseDSN = "postgres://root:12345@localhost:1111/shortener"
+		cfg.DatabaseDSN = "postgres://root:12345@localhost:5432/shorten"
 	}
 
 	////cfg.AppKey = "49a8aca82c132d8d1f430e32be1e6ff3"
@@ -56,10 +53,10 @@ func New() *App {
 	//	cfg.ServerStoragePath = "storage.log"
 	//}
 
-	db, err := pgx.Connect(context.Background(), cfg.DatabaseDSN)
-	if err != nil {
-		fmt.Println(err)
-	}
+	//db , err := postgres.InitDB(cfg.DatabaseDSN)
+	//if err != nil {
+	//	fmt.Println(err)
+	//}
 
 	urls := make(map[string]string)
 
@@ -78,7 +75,6 @@ func New() *App {
 
 	return &App{
 		Config:          cfg,
-		db:              db,
 		urls:            urls,
 		userHistoryURLs: userHistoryURLs,
 	}

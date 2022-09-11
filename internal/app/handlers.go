@@ -3,11 +3,11 @@ package app
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/rainset/shortener/internal/app/cookie"
+	"github.com/rainset/shortener/internal/app/storage/postgres"
 	"io"
 	"net/http"
 )
@@ -23,17 +23,14 @@ func (a *App) NewRouter() *mux.Router {
 }
 
 func (a *App) PingHandler(w http.ResponseWriter, r *http.Request) {
-	if a.db == nil {
+	err := postgres.InitDB(a.Config.DatabaseDSN)
+	if err != nil {
+		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	if err := a.db.Ping(context.Background()); err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
-		return
-	}
 	w.WriteHeader(http.StatusOK)
-	defer a.db.Close(context.Background())
+	defer postgres.Close()
 }
 
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
