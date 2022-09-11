@@ -15,7 +15,7 @@ func InitDB(dataSourceName string) (err error) {
 	db, err = pgx.Connect(context.Background(), dataSourceName)
 
 	if db == nil && err == nil {
-		err = errors.New("Connection problems")
+		err = errors.New("connection problems")
 	}
 
 	if err != nil {
