@@ -46,7 +46,7 @@ func New() *App {
 	}
 
 	if cfg.DatabaseDSN == "" {
-		cfg.DatabaseDSN = "postgres://root:12345@localhost:5432/shorten"
+		cfg.DatabaseDSN = "postgres://root:12345@localhost:1111/shortener"
 	}
 
 	////cfg.AppKey = "49a8aca82c132d8d1f430e32be1e6ff3"
