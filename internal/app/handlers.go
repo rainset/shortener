@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rainset/shortener/internal/app/cookie"
 	"io"
 	"net/http"
@@ -24,15 +23,17 @@ func (a *App) NewRouter() *mux.Router {
 }
 
 func (a *App) PingHandler(w http.ResponseWriter, r *http.Request) {
-
-	conn, err := pgxpool.Connect(context.Background(), a.Config.DatabaseDSN)
-	if err != nil {
-		fmt.Println(err)
+	if a.db == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	if err := a.db.Ping(context.Background()); err != nil {
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
-	defer conn.Close()
+	defer a.db.Close(context.Background())
 }
 
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
