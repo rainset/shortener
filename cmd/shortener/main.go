@@ -15,12 +15,13 @@ func main() {
 	application := app.New()
 	application.InitFlags()
 
-	errDB := postgres.InitDB(application.Config.DatabaseDSN)
-	if errDB != nil {
-		fmt.Println(errDB)
+	if application.Config.DatabaseDSN != "" {
+		errDB := postgres.InitDB(application.Config.DatabaseDSN)
+		if errDB != nil {
+			fmt.Println(errDB)
+		}
+		postgres.CreateTables()
 	}
-
-	postgres.CreateTables()
 
 	r := application.NewRouter()
 	http.Handle("/", r)

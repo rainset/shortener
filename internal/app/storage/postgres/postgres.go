@@ -39,15 +39,22 @@ func Close() {
 	db.Close(context.Background())
 }
 
-func CreateTables() {
+func CreateTables() error {
+
+	//if db == nil {
+	//	return errors.New("create tables, err connection")
+	//}
+
 	c, ioErr := ioutil.ReadFile("migrations/tables.sql")
 	if ioErr != nil {
 		log.Println("read file tables: ", ioErr)
+		return ioErr
 	}
 	q := string(c)
 	_, err := db.Exec(context.Background(), q)
 	if err != nil {
 		log.Println("create tables: ", err)
+		return err
 	}
 	log.Println("tables created")
 }
