@@ -57,6 +57,7 @@ func CreateTables() error {
 		return err
 	}
 	log.Println("tables created")
+	return nil
 }
 
 func AddURL(hash, originalURL string) error {

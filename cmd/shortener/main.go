@@ -2,7 +2,6 @@ package main
 
 import (
 	"compress/gzip"
-	"fmt"
 	"github.com/gorilla/handlers"
 	"github.com/rainset/shortener/internal/app"
 	"github.com/rainset/shortener/internal/app/storage/postgres"
@@ -18,9 +17,12 @@ func main() {
 	if application.Config.DatabaseDSN != "" {
 		errDB := postgres.InitDB(application.Config.DatabaseDSN)
 		if errDB != nil {
-			fmt.Println(errDB)
+			log.Println(errDB)
 		}
-		postgres.CreateTables()
+		errDB = postgres.CreateTables()
+		if errDB != nil {
+			log.Println(errDB)
+		}
 	}
 
 	r := application.NewRouter()
