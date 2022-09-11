@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/jackc/pgx/v4"
+	"io/ioutil"
 	"log"
 )
 
@@ -23,7 +24,41 @@ func InitDB(dataSourceName string) (err error) {
 		return err
 	}
 	log.Print("DB connection initialized...")
-	return db.Ping(context.Background())
+	return err
+}
+
+func Ping() {
+	err := db.Ping(context.Background())
+	if err != nil {
+		log.Printf("ping error: %s", err)
+	}
+}
+
+func Close() {
+	log.Print("DB connection closed.")
+	db.Close(context.Background())
+}
+
+func CreateTables() {
+	c, ioErr := ioutil.ReadFile("migrations/tables.sql")
+	if ioErr != nil {
+		log.Println("read file tables: ", ioErr)
+	}
+	q := string(c)
+	_, err := db.Exec(context.Background(), q)
+	if err != nil {
+		log.Println("create tables: ", err)
+	}
+	log.Println("tables created")
+}
+
+func AddURL(hash, originalURL string) error {
+	q := "INSERT INTO urls (hash, original) VALUES ($1, $2)"
+	_, err := db.Exec(context.Background(), q, hash, originalURL)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 //type Book struct {
@@ -32,11 +67,6 @@ func InitDB(dataSourceName string) (err error) {
 //	Author string
 //	Price  float32
 //}
-
-func Close() {
-	log.Print("DB connection closed.")
-	db.Close(context.Background())
-}
 
 //func AllBooks() ([]Book, error) {
 //	// This now uses the unexported global variable.

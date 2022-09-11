@@ -104,12 +104,12 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	code, err := a.AddURL(string(bodyBytes))
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, fmt.Sprintf("incorrect url format, code: %s body: %s", code, string(bodyBytes)), http.StatusBadRequest)
 		return
 	}
 
 	generateduserID := cookie.GenerateUniqueuserID()
-
 	var cookieuserID string
 	cookieuserID, err = cookie.Get(w, r, "userID")
 	if err != nil {
