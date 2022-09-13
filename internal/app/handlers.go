@@ -36,6 +36,7 @@ func (a *App) PingHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	fmt.Println(vars)
 	urlValue := a.GetURL(vars["id"])
 	if urlValue == "" {
 		http.Error(w, "Bad Url", http.StatusBadRequest)
@@ -199,12 +200,12 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 	type ShortenBatchRequest struct {
 		CorrelationID string `json:"correlation_id"`
-		OriginalUrl   string `json:"original_url"`
+		OriginalURL   string `json:"original_url"`
 	}
 
 	type ShortenBatchResponse struct {
 		CorrelationID string `json:"correlation_id"`
-		ShortUrl      string `json:"short_url"`
+		ShortURL      string `json:"short_url"`
 	}
 
 	var bodyBytes []byte
@@ -230,7 +231,7 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(shortenBatchRequestList)
 
 	for _, v := range shortenBatchRequestList {
-		batchURLs = append(batchURLs, postgres.BatchUrls{CorrelationID: v.CorrelationID, OriginalUrl: v.OriginalUrl})
+		batchURLs = append(batchURLs, postgres.BatchUrls{CorrelationID: v.CorrelationID, OriginalURL: v.OriginalURL})
 	}
 
 	result, err := postgres.AddBatchURL(&batchURLs)
@@ -241,7 +242,7 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 	var response []ShortenBatchResponse
 	for _, v := range result {
-		response = append(response, ShortenBatchResponse{ShortUrl: a.GenerateShortenURL(v.Hash), CorrelationID: v.CorrelationID})
+		response = append(response, ShortenBatchResponse{ShortURL: a.GenerateShortenURL(v.Hash), CorrelationID: v.CorrelationID})
 	}
 
 	shortenJSON, err := json.Marshal(response)

@@ -14,12 +14,18 @@ var db *pgx.Conn
 
 type BatchUrls struct {
 	CorrelationID string
-	OriginalUrl   string
+	OriginalURL   string
 }
 
 type ResultBatchUrls struct {
 	CorrelationID string
 	Hash          string
+}
+
+type ResultURL struct {
+	ID       int
+	Hash     string
+	Original string
 }
 
 // InitDB sets up setting up the connection pool global variable.
@@ -71,6 +77,20 @@ func CreateTables() error {
 	return nil
 }
 
+func GetURL(hash string) (ResultURL, error) {
+	var item ResultURL
+	q := "SELECT * FROM urls WHERE hash = $1"
+	err := db.QueryRow(context.Background(), q, hash).Scan(&item.ID, &item.Hash, &item.Original)
+
+	if err != nil {
+		return item, err
+	}
+	if err != nil {
+		return item, err
+	}
+	return item, nil
+}
+
 func AddURL(hash, originalURL string) error {
 	q := "INSERT INTO urls (hash, original) VALUES ($1, $2)"
 	_, err := db.Exec(context.Background(), q, hash, originalURL)
@@ -98,7 +118,7 @@ func AddBatchURL(urls *[]BatchUrls) ([]ResultBatchUrls, error) {
 	for _, v := range *urls {
 
 		hash := helper.GenerateToken(8)
-		_, err = tx.Exec(context.Background(), "batch_insert", hash, v.OriginalUrl)
+		_, err = tx.Exec(context.Background(), "batch_insert", hash, v.OriginalURL)
 		if err == nil {
 			result = append(result, ResultBatchUrls{CorrelationID: v.CorrelationID, Hash: hash})
 		}

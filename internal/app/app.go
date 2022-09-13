@@ -43,9 +43,9 @@ func New() *App {
 		cfg.ServerBaseURL = "http://localhost:8080"
 	}
 
-	if cfg.DatabaseDSN == "" {
-		cfg.DatabaseDSN = "postgres://root:12345@localhost:5432/shorten"
-	}
+	//if cfg.DatabaseDSN == "" {
+	//	cfg.DatabaseDSN = "postgres://root:12345@localhost:5432/shorten"
+	//}
 
 	////cfg.AppKey = "49a8aca82c132d8d1f430e32be1e6ff3"
 	//cfg.AppKey = "1234567890123456789012345678901234567890"
@@ -122,6 +122,15 @@ func (a *App) AddUserHistoryURL(userID, hash string) (err error) {
 func (a *App) GetURL(urlID string) string {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
+
+	if a.Config.DatabaseDSN != "" {
+		res, err := postgres.GetURL(urlID)
+		fmt.Println(res)
+		if err == nil && res.Original != "" {
+			return res.Original
+		}
+	}
+
 	return a.urls[urlID]
 }
 
