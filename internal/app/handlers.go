@@ -16,6 +16,7 @@ func (a *App) NewRouter() *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/ping", a.PingHandler).Methods("GET")
 	r.HandleFunc("/{id:[0-9a-zA-Z+]+}", a.GetURLHandler).Methods("GET")
+	r.HandleFunc("/api/shorten/batch", a.SaveURLBatchJSONHandler).Methods("POST")
 	r.HandleFunc("/api/shorten", a.SaveURLJSONHandler).Methods("POST")
 	r.HandleFunc("/api/user/urls", a.UserURLListHandler).Methods("GET")
 	r.HandleFunc("/", a.SaveURLHandler).Methods("POST")
@@ -192,6 +193,70 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
+
+	type ShortenBatchRequest struct {
+		CorrelationID string `json:"correlation_id"`
+		OriginalUrl   string `json:"original_url"`
+	}
+
+	type ShortenBatchResponse struct {
+		CorrelationID string `json:"correlation_id"`
+		ShortUrl      string `json:"short_url"`
+	}
+
+	var bodyBytes []byte
+	var err error
+
+	if r.Body != nil {
+		bodyBytes, err = readBodyBytes(r)
+		if err != nil || len(bodyBytes) == 0 {
+			a.ShowJSONError(w, http.StatusBadRequest, "Only Json format required in request body")
+			return
+		}
+
+		defer r.Body.Close()
+	}
+
+	shortenBatchRequestList := make([]ShortenBatchRequest, 0)
+	batchURLs := make([]postgres.BatchUrls, 0)
+	//var value []interface{}
+	if err := json.Unmarshal(bodyBytes, &shortenBatchRequestList); err != nil {
+		a.ShowJSONError(w, http.StatusBadRequest, "json decode error")
+		return
+	}
+	fmt.Println(shortenBatchRequestList)
+
+	for _, v := range shortenBatchRequestList {
+		batchURLs = append(batchURLs, postgres.BatchUrls{CorrelationID: v.CorrelationID, OriginalUrl: v.OriginalUrl})
+	}
+
+	result, err := postgres.AddBatchURL(&batchURLs)
+	if err != nil {
+		a.ShowJSONError(w, http.StatusBadRequest, "db save error")
+		return
+	}
+
+	var response []ShortenBatchResponse
+	for _, v := range result {
+		response = append(response, ShortenBatchResponse{ShortUrl: a.GenerateShortenURL(v.Hash), CorrelationID: v.CorrelationID})
+	}
+
+	shortenJSON, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, "json response error", http.StatusBadRequest)
+		return
+	}
+	fmt.Println(shortenJSON, string(shortenJSON))
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_, writeError := w.Write(shortenJSON)
+	if writeError != nil {
+		http.Error(w, "response body error", http.StatusBadRequest)
+		return
+	}
 }
 
 func (a *App) ShowJSONError(w http.ResponseWriter, code int, message string) {

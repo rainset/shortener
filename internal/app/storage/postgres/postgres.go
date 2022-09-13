@@ -4,12 +4,23 @@ import (
 	"context"
 	"errors"
 	"github.com/jackc/pgx/v4"
+	"github.com/rainset/shortener/internal/app/helper"
 	"io/ioutil"
 	"log"
 )
 
 // This time the global variable is unexported.
 var db *pgx.Conn
+
+type BatchUrls struct {
+	CorrelationID string
+	OriginalUrl   string
+}
+
+type ResultBatchUrls struct {
+	CorrelationID string
+	Hash          string
+}
 
 // InitDB sets up setting up the connection pool global variable.
 func InitDB(dataSourceName string) (err error) {
@@ -69,36 +80,37 @@ func AddURL(hash, originalURL string) error {
 	return nil
 }
 
-//type Book struct {
-//	Isbn   string
-//	Title  string
-//	Author string
-//	Price  float32
-//}
+func AddBatchURL(urls *[]BatchUrls) ([]ResultBatchUrls, error) {
 
-//func AllBooks() ([]Book, error) {
-//	// This now uses the unexported global variable.
-//	rows, err := db.Query("SELECT * FROM books")
-//	if err != nil {
-//		return nil, err
-//	}
-//	defer rows.Close()
-//
-//	var bks []Book
-//
-//	for rows.Next() {
-//		var bk Book
-//
-//		err := rows.Scan(&bk.Isbn, &bk.Title, &bk.Author, &bk.Price)
-//		if err != nil {
-//			return nil, err
-//		}
-//
-//		bks = append(bks, bk)
-//	}
-//	if err = rows.Err(); err != nil {
-//		return nil, err
-//	}
-//
-//	return bks, nil
-//}
+	var result []ResultBatchUrls
+
+	tx, err := db.Begin(context.Background())
+	if err != nil {
+		return result, err
+	}
+
+	q := "INSERT INTO urls (hash, original) VALUES ($1, $2)"
+	_, err = tx.Prepare(context.Background(), "batch_insert", q)
+	if err != nil {
+		return result, err
+	}
+
+	for _, v := range *urls {
+
+		hash := helper.GenerateToken(8)
+		_, err = tx.Exec(context.Background(), "batch_insert", hash, v.OriginalUrl)
+		if err == nil {
+			result = append(result, ResultBatchUrls{CorrelationID: v.CorrelationID, Hash: hash})
+		}
+	}
+
+	if err != nil {
+		_ = tx.Rollback(context.Background())
+		return result, err
+	}
+	err = tx.Commit(context.Background())
+	if err != nil {
+		return result, err
+	}
+	return result, nil
+}
