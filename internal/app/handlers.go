@@ -116,7 +116,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("InitDB error: ", err)
 	}
 
-	var isDbExist bool
+	var isDBExist bool
 	code, err := a.AddURL(string(bodyBytes))
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -125,7 +125,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 			//fmt.Println(pgErr.Code)    // => 42601
 
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				isDbExist = true
+				isDBExist = true
 				err = nil
 			}
 		}
@@ -153,7 +153,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if isDbExist {
+	if isDBExist {
 		w.WriteHeader(http.StatusConflict)
 	} else {
 		w.WriteHeader(http.StatusCreated)
@@ -200,7 +200,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var isDbExist bool
+	var isDBExist bool
 	code, err := a.AddURL(value.URL)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -208,7 +208,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 			//fmt.Println(pgErr.Message) // => syntax error at end of input
 			//fmt.Println(pgErr.Code)    // => 42601
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				isDbExist = true
+				isDBExist = true
 				err = nil
 			}
 		}
@@ -228,7 +228,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 
-	if isDbExist {
+	if isDBExist {
 		w.WriteHeader(http.StatusConflict)
 	} else {
 		w.WriteHeader(http.StatusCreated)
