@@ -85,9 +85,6 @@ func GetURL(hash string) (ResultURL, error) {
 	if err != nil {
 		return item, err
 	}
-	if err != nil {
-		return item, err
-	}
 	return item, nil
 }
 
