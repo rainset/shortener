@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgerrcode"
 	"github.com/rainset/shortener/internal/app/cookie"
 	"github.com/rainset/shortener/internal/app/storage/postgres"
 	"io"
@@ -24,19 +27,23 @@ func (a *App) NewRouter() *mux.Router {
 }
 
 func (a *App) PingHandler(w http.ResponseWriter, r *http.Request) {
-	err := postgres.InitDB(a.Config.DatabaseDSN)
+	err := a.InitDB()
 	if err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	defer postgres.Close()
 }
 
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	fmt.Println(vars)
+
+	err := a.InitDB()
+	if err != nil {
+		fmt.Println("InitDB error: ", err)
+	}
+
 	urlValue := a.GetURL(vars["id"])
 	if urlValue == "" {
 		http.Error(w, "Bad Url", http.StatusBadRequest)
@@ -104,13 +111,32 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	err = a.InitDB()
+	if err != nil {
+		fmt.Println("InitDB error: ", err)
+	}
+
+	var isDbExist bool
 	code, err := a.AddURL(string(bodyBytes))
 	if err != nil {
-		fmt.Println(err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			//fmt.Println(pgErr.Message) // => syntax error at end of input
+			//fmt.Println(pgErr.Code)    // => 42601
+
+			if pgErr.Code == pgerrcode.UniqueViolation {
+				isDbExist = true
+				err = nil
+			}
+		}
+	}
+
+	if err != nil {
 		http.Error(w, fmt.Sprintf("incorrect url format, code: %s body: %s", code, string(bodyBytes)), http.StatusBadRequest)
 		return
 	}
 
+	shortenURL := a.GenerateShortenURL(code)
 	generateduserID := cookie.GenerateUniqueuserID()
 	var cookieuserID string
 	cookieuserID, err = cookie.Get(w, r, "userID")
@@ -127,10 +153,11 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortenURL := a.GenerateShortenURL(code)
-
-	//w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
+	if isDbExist {
+		w.WriteHeader(http.StatusConflict)
+	} else {
+		w.WriteHeader(http.StatusCreated)
+	}
 
 	_, writeError := w.Write([]byte(shortenURL))
 	if writeError != nil {
@@ -162,16 +189,30 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 	}
 
+	err = a.InitDB()
+	if err != nil {
+		fmt.Println("InitDB error: ", err)
+	}
+
 	value := ShortenRequest{}
 	if err := json.Unmarshal(bodyBytes, &value); err != nil {
 		a.ShowJSONError(w, http.StatusBadRequest, "Only Json format required in request body")
 		return
 	}
 
+	var isDbExist bool
 	code, err := a.AddURL(value.URL)
-
-	fmt.Println("code:", code)
-	fmt.Println("err:", err)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			//fmt.Println(pgErr.Message) // => syntax error at end of input
+			//fmt.Println(pgErr.Code)    // => 42601
+			if pgErr.Code == pgerrcode.UniqueViolation {
+				isDbExist = true
+				err = nil
+			}
+		}
+	}
 
 	if err != nil {
 		http.Error(w, "incorrect url format", http.StatusBadRequest)
@@ -186,7 +227,12 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+
+	if isDbExist {
+		w.WriteHeader(http.StatusConflict)
+	} else {
+		w.WriteHeader(http.StatusCreated)
+	}
 
 	_, writeError := w.Write(shortenJSON)
 	if writeError != nil {
@@ -221,6 +267,11 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 	}
 
+	err = a.InitDB()
+	if err != nil {
+		fmt.Println("InitDB error: ", err)
+	}
+
 	shortenBatchRequestList := make([]ShortenBatchRequest, 0)
 	batchURLs := make([]postgres.BatchUrls, 0)
 	//var value []interface{}
@@ -236,6 +287,7 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 	result, err := postgres.AddBatchURL(&batchURLs)
 	if err != nil {
+		fmt.Println(err)
 		a.ShowJSONError(w, http.StatusBadRequest, "db save error")
 		return
 	}

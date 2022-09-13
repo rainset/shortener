@@ -54,11 +54,6 @@ func New() *App {
 	//	cfg.ServerStoragePath = "storage.log"
 	//}
 
-	//db , err := postgres.InitDB(cfg.DatabaseDSN)
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
-
 	urls := make(map[string]string)
 
 	if cfg.ServerFileStoragePath != "" {
@@ -89,12 +84,17 @@ func (a *App) AddURL(value string) (hash string, err error) {
 	if err != nil {
 		return "", err
 	}
-
 	hash = helper.GenerateToken(8)
-	a.urls[hash] = urlValue.String()
-
 	if a.Config.DatabaseDSN != "" {
 		err = postgres.AddURL(hash, urlValue.String())
+		if err != nil {
+			result, errCheck := postgres.GetByOriginalURL(urlValue.String())
+			if errCheck != nil {
+				return hash, errCheck
+			}
+			hash = result.Hash
+			return hash, err
+		}
 	}
 
 	if a.Config.ServerFileStoragePath != "" {
@@ -109,6 +109,9 @@ func (a *App) AddURL(value string) (hash string, err error) {
 			return hash, fileErr
 		}
 	}
+
+	a.urls[hash] = urlValue.String()
+
 	return hash, err
 }
 
@@ -136,4 +139,21 @@ func (a *App) GetURL(urlID string) string {
 
 func (a *App) GenerateShortenURL(shortenCode string) string {
 	return fmt.Sprintf("%s/%s", a.Config.ServerBaseURL, shortenCode)
+}
+
+func (a *App) InitDB() error {
+	if a.Config.DatabaseDSN != "" {
+		errDB := postgres.InitDB(a.Config.DatabaseDSN)
+		if errDB != nil {
+			log.Println(errDB)
+			return errDB
+		}
+		errDB = postgres.CreateTables()
+		if errDB != nil {
+			log.Println(errDB)
+			return errDB
+		}
+	}
+	//defer postgres.Close()
+	return nil
 }

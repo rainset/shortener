@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"errors"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v4"
 	"github.com/rainset/shortener/internal/app/helper"
 	"io/ioutil"
@@ -88,6 +90,17 @@ func GetURL(hash string) (ResultURL, error) {
 	return item, nil
 }
 
+func GetByOriginalURL(originalURL string) (ResultURL, error) {
+	var item ResultURL
+	q := "SELECT * FROM urls WHERE original = $1"
+	err := db.QueryRow(context.Background(), q, originalURL).Scan(&item.ID, &item.Hash, &item.Original)
+
+	if err != nil {
+		return item, err
+	}
+	return item, nil
+}
+
 func AddURL(hash, originalURL string) error {
 	q := "INSERT INTO urls (hash, original) VALUES ($1, $2)"
 	_, err := db.Exec(context.Background(), q, hash, originalURL)
@@ -99,6 +112,7 @@ func AddURL(hash, originalURL string) error {
 
 func AddBatchURL(urls *[]BatchUrls) ([]ResultBatchUrls, error) {
 
+	var err error
 	var result []ResultBatchUrls
 
 	tx, err := db.Begin(context.Background())
@@ -113,18 +127,30 @@ func AddBatchURL(urls *[]BatchUrls) ([]ResultBatchUrls, error) {
 	}
 
 	for _, v := range *urls {
-
 		hash := helper.GenerateToken(8)
 		_, err = tx.Exec(context.Background(), "batch_insert", hash, v.OriginalURL)
+		if err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) {
+				if pgErr.Code == pgerrcode.UniqueViolation {
+					err = nil
+					item, errItem := GetByOriginalURL(v.OriginalURL)
+					if errItem != nil {
+						return result, errItem
+					}
+					hash = item.Hash
+				}
+			}
+		}
 		if err == nil {
 			result = append(result, ResultBatchUrls{CorrelationID: v.CorrelationID, Hash: hash})
 		}
 	}
 
-	if err != nil {
-		_ = tx.Rollback(context.Background())
-		return result, err
-	}
+	//if err != nil {
+	//	_ = tx.Rollback(context.Background())
+	//	return result, err
+	//}
 	err = tx.Commit(context.Background())
 	if err != nil {
 		return result, err
