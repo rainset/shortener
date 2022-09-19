@@ -28,7 +28,6 @@ type UserHistoryURL struct {
 	Hash     string
 }
 
-// Init sets setting up the connection pool global variable.
 func Init(dataSourceName string) *Database {
 	db, err := pgx.Connect(context.Background(), dataSourceName)
 
@@ -141,6 +140,10 @@ func (d *Database) GetListUserHistoryURL(cookieID string) (result []storage.Resu
 
 	q := "SELECT DISTINCT uh.hash, uh.id, uh.cookie_id, u.original FROM user_history_urls uh INNER JOIN urls u ON u.hash = uh.hash WHERE uh.cookie_id =$1"
 	rows, err := d.pgx.Query(context.Background(), q, cookieID)
+
+	if err != nil {
+		return result, err
+	}
 
 	defer rows.Close()
 

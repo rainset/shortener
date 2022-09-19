@@ -62,8 +62,7 @@ func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
 		OriginalURL string `json:"original_url"`
 	}
 
-	userID, err := cookie.Get(w, r, "userID")
-
+	userID, _ := cookie.Get(w, r, "userID")
 	userHistoryURLs, err := a.s.GetListUserHistoryURL(userID)
 
 	fmt.Println(userID, err)
@@ -133,7 +132,6 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 
 			if pgErr.Code == pgerrcode.UniqueViolation {
 				isDBExist = true
-				err = nil
 				hash, err = a.s.GetByOriginalURL(urlValue.String())
 				if err != nil {
 					return
@@ -158,15 +156,14 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 		cookieuserID = generateduserID
 	}
 
-	errH := a.s.AddUserHistoryURL(cookieuserID, hash)
-	if errH != nil {
-		fmt.Println(errH)
-		http.Error(w, "AddUserHistoryURL error", http.StatusBadRequest)
-		return
-	}
+	err = a.s.AddUserHistoryURL(cookieuserID, hash)
 
 	if isDBExist {
 		w.WriteHeader(http.StatusConflict)
+	} else if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	} else {
 		w.WriteHeader(http.StatusCreated)
 	}
@@ -176,7 +173,6 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "response body error", http.StatusBadRequest)
 		return
 	}
-	return
 }
 
 func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
@@ -216,7 +212,6 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
 				isDBExist = true
-				err = nil
 				hash, err = a.s.GetByOriginalURL(value.URL)
 				if err != nil {
 					return
@@ -233,21 +228,21 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 	shortenURL := a.GenerateShortenURL(hash)
 	shortenData := ShortenResponse{Result: shortenURL}
 	shortenJSON, err := json.Marshal(shortenData)
-	if err != nil {
-		http.Error(w, "json response error", http.StatusBadRequest)
-		return
-	}
+
 	w.Header().Set("Content-Type", "application/json")
 
 	if isDBExist {
 		w.WriteHeader(http.StatusConflict)
+	} else if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	} else {
 		w.WriteHeader(http.StatusCreated)
 	}
 
 	_, writeError := w.Write(shortenJSON)
 	if writeError != nil {
-		http.Error(w, "response body error", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 

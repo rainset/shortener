@@ -3,7 +3,6 @@ package main
 import (
 	"compress/gzip"
 	"flag"
-	"fmt"
 	"github.com/gorilla/handlers"
 	"github.com/rainset/shortener/internal/app"
 	"github.com/rainset/shortener/internal/storage"
@@ -50,8 +49,6 @@ func main() {
 	default:
 		s = memory.Init()
 	}
-
-	fmt.Println(s)
 
 	application := app.New(s)
 	application.SetConfigServerAddress(*serverAddress)
