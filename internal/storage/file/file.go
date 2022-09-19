@@ -170,7 +170,7 @@ func (f *File) AddUserHistoryURL(cookieID, hash string) error {
 	return nil
 }
 
-func (f *File) GetListUserHistoryURL(cookieID string) (result []storage.ResultHistoryUrl, err error) {
+func (f *File) GetListUserHistoryURL(cookieID string) (result []storage.ResultHistoryURL, err error) {
 
 	urlList := make(map[string]string)
 	consumer, err := NewConsumer(f.fileStoragePath)
@@ -186,7 +186,7 @@ func (f *File) GetListUserHistoryURL(cookieID string) (result []storage.ResultHi
 	for _, row := range f.userHistoryURLs {
 		if cookieID == row.CookieID {
 			original := urlList[row.Hash]
-			result = append(result, storage.ResultHistoryUrl{CookieID: cookieID, Hash: row.Hash, Original: original})
+			result = append(result, storage.ResultHistoryURL{CookieID: cookieID, Hash: row.Hash, Original: original})
 		}
 	}
 	return result, err

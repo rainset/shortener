@@ -136,7 +136,7 @@ func (d *Database) AddUserHistoryURL(cookieID, hash string) error {
 	return nil
 }
 
-func (d *Database) GetListUserHistoryURL(cookieID string) (result []storage.ResultHistoryUrl, err error) {
+func (d *Database) GetListUserHistoryURL(cookieID string) (result []storage.ResultHistoryURL, err error) {
 
 	q := "SELECT DISTINCT uh.hash, uh.id, uh.cookie_id, u.original FROM user_history_urls uh INNER JOIN urls u ON u.hash = uh.hash WHERE uh.cookie_id =$1"
 	rows, err := d.pgx.Query(context.Background(), q, cookieID)
@@ -148,12 +148,12 @@ func (d *Database) GetListUserHistoryURL(cookieID string) (result []storage.Resu
 	defer rows.Close()
 
 	for rows.Next() {
-		rowArray := storage.ResultHistoryUrl{}
+		rowArray := storage.ResultHistoryURL{}
 		err := rows.Scan(&rowArray.Hash, &rowArray.ID, &rowArray.CookieID, &rowArray.Original)
 		if err != nil {
 			return result, err
 		}
-		result = append(result, storage.ResultHistoryUrl{ID: rowArray.ID, Hash: rowArray.Hash, CookieID: rowArray.CookieID, Original: rowArray.Original})
+		result = append(result, storage.ResultHistoryURL{ID: rowArray.ID, Hash: rowArray.Hash, CookieID: rowArray.CookieID, Original: rowArray.Original})
 	}
 	return result, err
 }

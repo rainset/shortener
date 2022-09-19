@@ -73,11 +73,11 @@ func (m *Memory) AddUserHistoryURL(cookieID, hash string) error {
 	return nil
 }
 
-func (m *Memory) GetListUserHistoryURL(cookieID string) (result []storage.ResultHistoryUrl, err error) {
+func (m *Memory) GetListUserHistoryURL(cookieID string) (result []storage.ResultHistoryURL, err error) {
 	for _, item := range m.userHistoryURLs {
 		if cookieID == item.CookieID {
 			original := m.urls[item.Hash].Original
-			result = append(result, storage.ResultHistoryUrl{CookieID: cookieID, Hash: item.Hash, Original: original})
+			result = append(result, storage.ResultHistoryURL{CookieID: cookieID, Hash: item.Hash, Original: original})
 		}
 	}
 	fmt.Println("GetListUserHistoryURL", result)

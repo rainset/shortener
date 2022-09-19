@@ -10,7 +10,7 @@ type ResultBatchUrls struct {
 	Hash          string
 }
 
-type ResultHistoryUrl struct {
+type ResultHistoryURL struct {
 	ID       int
 	CookieID string
 	Hash     string
@@ -24,5 +24,5 @@ type InterfaceStorage interface {
 	AddBatchURL([]BatchUrls) ([]ResultBatchUrls, error)
 	AddUserHistoryURL(cookieID, hash string) (err error)
 	Ping() error
-	GetListUserHistoryURL(cookieID string) ([]ResultHistoryUrl, error)
+	GetListUserHistoryURL(cookieID string) ([]ResultHistoryURL, error)
 }
