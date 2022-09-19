@@ -9,10 +9,12 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
-	"github.com/rainset/shortener/internal/app/cookie"
-	"github.com/rainset/shortener/internal/app/storage/postgres"
+	"github.com/rainset/shortener/internal/cookie"
+	"github.com/rainset/shortener/internal/helper"
+	"github.com/rainset/shortener/internal/storage"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 func (a *App) NewRouter() *mux.Router {
@@ -27,7 +29,7 @@ func (a *App) NewRouter() *mux.Router {
 }
 
 func (a *App) PingHandler(w http.ResponseWriter, r *http.Request) {
-	err := a.InitDB()
+	err := a.s.Ping()
 	if err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -39,13 +41,13 @@ func (a *App) PingHandler(w http.ResponseWriter, r *http.Request) {
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	err := a.InitDB()
-	if err != nil {
-		fmt.Println("InitDB error: ", err)
-	}
+	//err := a.InitDB()
+	//if err != nil {
+	//	fmt.Println("InitDB error: ", err)
+	//}
 
-	urlValue := a.GetURL(vars["id"])
-	if urlValue == "" {
+	urlValue, err := a.s.GetURL(vars["id"])
+	if urlValue == "" || err != nil {
 		http.Error(w, "Bad Url", http.StatusBadRequest)
 		return
 	}
@@ -62,9 +64,11 @@ func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := cookie.Get(w, r, "userID")
 
+	userHistoryURLs, err := a.s.GetListUserHistoryURL(userID)
+
 	fmt.Println(userID, err)
-	fmt.Println(a.userHistoryURLs)
-	if err != nil || len(userID) == 0 || len(a.userHistoryURLs[userID]) == 0 {
+	fmt.Println("UserURLListHandler", userHistoryURLs)
+	if err != nil || len(userID) == 0 || len(userHistoryURLs) == 0 {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNoContent)
@@ -73,16 +77,12 @@ func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	list := make([]ListURL, 0)
 
-	for _, shortHashURL := range a.userHistoryURLs[userID] {
-
-		OriginalURL := a.urls[shortHashURL]
-
-		if len(shortHashURL) == 0 || len(OriginalURL) == 0 {
+	for _, item := range userHistoryURLs {
+		if len(item.Hash) == 0 || len(item.CookieID) == 0 {
 			continue
 		}
-
-		ShortURL := fmt.Sprintf("%s/%s", a.Config.ServerBaseURL, shortHashURL)
-		list = append(list, ListURL{ShortURL: ShortURL, OriginalURL: OriginalURL})
+		ShortURL := fmt.Sprintf("%s/%s", a.Config.ServerBaseURL, item.Hash)
+		list = append(list, ListURL{ShortURL: ShortURL, OriginalURL: item.Original})
 	}
 
 	data, err := json.Marshal(list)
@@ -101,6 +101,10 @@ func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
+
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+
 	var bodyBytes []byte
 	var err error
 	bodyBytes, err = readBodyBytes(r)
@@ -111,14 +115,17 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	err = a.InitDB()
+	urlValue, err := url.ParseRequestURI(string(bodyBytes))
 	if err != nil {
-		fmt.Println("InitDB error: ", err)
+		return
 	}
+	hash := helper.GenerateToken(8)
 
 	var isDBExist bool
-	code, err := a.AddURL(string(bodyBytes))
+	err = a.s.AddURL(hash, urlValue.String())
 	if err != nil {
+		fmt.Println(err)
+
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			//fmt.Println(pgErr.Message) // => syntax error at end of input
@@ -127,19 +134,22 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
 				isDBExist = true
 				err = nil
+				hash, err = a.s.GetByOriginalURL(urlValue.String())
+				if err != nil {
+					return
+				}
 			}
 		}
 	}
 
 	if err != nil {
-		http.Error(w, fmt.Sprintf("incorrect url format, code: %s body: %s", code, string(bodyBytes)), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("incorrect url format, hash: %s body: %s", hash, urlValue.String()), http.StatusBadRequest)
 		return
 	}
 
-	shortenURL := a.GenerateShortenURL(code)
+	shortenURL := a.GenerateShortenURL(hash)
 	generateduserID := cookie.GenerateUniqueuserID()
-	var cookieuserID string
-	cookieuserID, err = cookie.Get(w, r, "userID")
+	cookieuserID, err := cookie.Get(w, r, "userID")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -148,7 +158,9 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 		cookieuserID = generateduserID
 	}
 
-	if err := a.AddUserHistoryURL(cookieuserID, code); err != nil {
+	errH := a.s.AddUserHistoryURL(cookieuserID, hash)
+	if errH != nil {
+		fmt.Println(errH)
 		http.Error(w, "AddUserHistoryURL error", http.StatusBadRequest)
 		return
 	}
@@ -164,7 +176,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "response body error", http.StatusBadRequest)
 		return
 	}
-
+	return
 }
 
 func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
@@ -188,28 +200,27 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 		defer r.Body.Close()
 	}
-
-	err = a.InitDB()
-	if err != nil {
-		fmt.Println("InitDB error: ", err)
-	}
-
+	fmt.Println("")
 	value := ShortenRequest{}
 	if err := json.Unmarshal(bodyBytes, &value); err != nil {
 		a.ShowJSONError(w, http.StatusBadRequest, "Only Json format required in request body")
 		return
 	}
 
+	hash := helper.GenerateToken(8)
+
 	var isDBExist bool
-	code, err := a.AddURL(value.URL)
+	err = a.s.AddURL(hash, value.URL)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
-			//fmt.Println(pgErr.Message) // => syntax error at end of input
-			//fmt.Println(pgErr.Code)    // => 42601
 			if pgErr.Code == pgerrcode.UniqueViolation {
 				isDBExist = true
 				err = nil
+				hash, err = a.s.GetByOriginalURL(value.URL)
+				if err != nil {
+					return
+				}
 			}
 		}
 	}
@@ -219,7 +230,7 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortenURL := a.GenerateShortenURL(code)
+	shortenURL := a.GenerateShortenURL(hash)
 	shortenData := ShortenResponse{Result: shortenURL}
 	shortenJSON, err := json.Marshal(shortenData)
 	if err != nil {
@@ -267,13 +278,13 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 	}
 
-	err = a.InitDB()
-	if err != nil {
-		fmt.Println("InitDB error: ", err)
-	}
+	//err = a.InitDB()
+	//if err != nil {
+	//	fmt.Println("InitDB error: ", err)
+	//}
 
 	shortenBatchRequestList := make([]ShortenBatchRequest, 0)
-	batchURLs := make([]postgres.BatchUrls, 0)
+	batchURLs := make([]storage.BatchUrls, 0)
 	//var value []interface{}
 	if err := json.Unmarshal(bodyBytes, &shortenBatchRequestList); err != nil {
 		a.ShowJSONError(w, http.StatusBadRequest, "json decode error")
@@ -282,10 +293,10 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(shortenBatchRequestList)
 
 	for _, v := range shortenBatchRequestList {
-		batchURLs = append(batchURLs, postgres.BatchUrls{CorrelationID: v.CorrelationID, OriginalURL: v.OriginalURL})
+		batchURLs = append(batchURLs, storage.BatchUrls{CorrelationID: v.CorrelationID, OriginalURL: v.OriginalURL})
 	}
 
-	result, err := postgres.AddBatchURL(&batchURLs)
+	result, err := a.s.AddBatchURL(batchURLs)
 	if err != nil {
 		fmt.Println(err)
 		a.ShowJSONError(w, http.StatusBadRequest, "db save error")

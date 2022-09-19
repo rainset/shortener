@@ -3,7 +3,7 @@ package cookie
 import (
 	"fmt"
 	"github.com/gorilla/securecookie"
-	"github.com/rainset/shortener/internal/app/helper"
+	"github.com/rainset/shortener/internal/helper"
 	"net/http"
 	"time"
 )
