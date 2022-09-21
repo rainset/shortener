@@ -10,7 +10,6 @@ import (
 )
 
 type File struct {
-	storage.InterfaceStorage
 	mutex           sync.Mutex
 	fileStoragePath string
 	userHistoryURLs []UserHistoryURL
@@ -41,7 +40,7 @@ type consumer struct {
 	decoder *json.Decoder
 }
 
-func Init(fileStoragePath string) *File {
+func New(fileStoragePath string) *File {
 
 	var userHistoryURLs []UserHistoryURL
 	return &File{
@@ -159,7 +158,7 @@ func (f *File) GetByOriginalURL(original string) (hash string, err error) {
 
 // заглушка реализовано только для postgres
 
-func (f *File) AddBatchURL(urls []storage.BatchUrls) (result []storage.ResultBatchUrls, err error) {
+func (f *File) AddBatchURL(_ []storage.BatchUrls) (result []storage.ResultBatchUrls, err error) {
 	return result, err
 }
 

@@ -2,8 +2,10 @@ package helper
 
 import (
 	"crypto/rand"
+	"fmt"
 	"log"
 	"math/big"
+	"time"
 )
 
 func GenerateToken(length int) string {
@@ -34,4 +36,11 @@ func GenerateRandom(size int) ([]byte, error) {
 		return nil, err
 	}
 	return b, nil
+}
+
+func GenerateUniqueuserID() string {
+	now := time.Now()
+	sec := now.Unix()
+	rnd, _ := GenerateRandom(32)
+	return fmt.Sprintf("user.%d.%x", sec, rnd)
 }

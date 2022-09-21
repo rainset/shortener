@@ -9,7 +9,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
-	"github.com/rainset/shortener/internal/cookie"
 	"github.com/rainset/shortener/internal/helper"
 	"github.com/rainset/shortener/internal/storage"
 	"io"
@@ -28,7 +27,7 @@ func (a *App) NewRouter() *mux.Router {
 	return r
 }
 
-func (a *App) PingHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) PingHandler(w http.ResponseWriter, _ *http.Request) {
 	err := a.s.Ping()
 	if err != nil {
 		fmt.Println(err)
@@ -40,18 +39,11 @@ func (a *App) PingHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-
-	//err := a.InitDB()
-	//if err != nil {
-	//	fmt.Println("InitDB error: ", err)
-	//}
-
 	urlValue, err := a.s.GetURL(vars["id"])
 	if urlValue == "" || err != nil {
 		http.Error(w, "Bad Url", http.StatusBadRequest)
 		return
 	}
-
 	http.Redirect(w, r, urlValue, http.StatusTemporaryRedirect)
 }
 
@@ -62,7 +54,7 @@ func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
 		OriginalURL string `json:"original_url"`
 	}
 
-	userID, _ := cookie.Get(w, r, "userID")
+	userID, _ := a.cookie.Get(w, r, "userID")
 	userHistoryURLs, err := a.s.GetListUserHistoryURL(userID)
 
 	fmt.Println(userID, err)
@@ -92,7 +84,7 @@ func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	_, writeError := w.Write([]byte(data))
+	_, writeError := w.Write(data)
 	if writeError != nil {
 		http.Error(w, "response body error", http.StatusBadRequest)
 		return
@@ -100,9 +92,6 @@ func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
-
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
 
 	var bodyBytes []byte
 	var err error
@@ -112,7 +101,9 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Body reading error", http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(r.Body)
 
 	urlValue, err := url.ParseRequestURI(string(bodyBytes))
 	if err != nil {
@@ -146,13 +137,13 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shortenURL := a.GenerateShortenURL(hash)
-	generateduserID := cookie.GenerateUniqueuserID()
-	cookieuserID, err := cookie.Get(w, r, "userID")
+	generateduserID := helper.GenerateUniqueuserID()
+	cookieuserID, err := a.cookie.Get(w, r, "userID")
 	if err != nil {
 		fmt.Println(err)
 	}
 	if len(cookieuserID) == 0 {
-		cookie.Set(w, r, "userID", generateduserID)
+		a.cookie.Set(w, r, "userID", generateduserID)
 		cookieuserID = generateduserID
 	}
 
@@ -194,7 +185,9 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		defer r.Body.Close()
+		defer func(Body io.ReadCloser) {
+			_ = Body.Close()
+		}(r.Body)
 	}
 	fmt.Println("")
 	value := ShortenRequest{}
@@ -270,7 +263,9 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		defer r.Body.Close()
+		defer func(Body io.ReadCloser) {
+			_ = Body.Close()
+		}(r.Body)
 	}
 
 	//err = a.InitDB()
@@ -344,7 +339,9 @@ func readBodyBytes(r *http.Request) ([]byte, error) {
 	if readErr != nil {
 		return nil, readErr
 	}
-	defer r.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(r.Body)
 
 	// GZIP decode
 	if len(r.Header["Content-Encoding"]) > 0 && r.Header["Content-Encoding"][0] == "gzip" {
@@ -352,7 +349,9 @@ func readBodyBytes(r *http.Request) ([]byte, error) {
 		if gzErr != nil {
 			return nil, gzErr
 		}
-		defer r.Close()
+		defer func(r *gzip.Reader) {
+			_ = r.Close()
+		}(r)
 
 		bb, err2 := io.ReadAll(r)
 		if err2 != nil {

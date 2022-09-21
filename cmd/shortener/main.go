@@ -43,16 +43,21 @@ func main() {
 
 	switch {
 	case *databaseDsn != "":
-		s = postgres.Init(*databaseDsn)
+		s = postgres.New(*databaseDsn)
 	case *fileStoragePath != "":
-		s = file.Init(*fileStoragePath)
+		s = file.New(*fileStoragePath)
 	default:
-		s = memory.Init()
+		s = memory.New()
 	}
 
-	application := app.New(s)
-	application.SetConfigServerAddress(*serverAddress)
-	application.SetConfigBaseURL(*baseURL)
+	conf := app.Config{
+		ServerAddress:  *serverAddress,
+		ServerBaseURL:  *baseURL,
+		CookieHashKey:  "49a8aca82c132d8d1f430e32be1e6ff3",
+		CookieBlockKey: "49a8aca82c132d8d1f430e32be1e6ff2",
+	}
+
+	application := app.New(s, conf)
 
 	r := application.NewRouter()
 	http.Handle("/", r)

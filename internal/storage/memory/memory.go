@@ -7,7 +7,6 @@ import (
 )
 
 type Memory struct {
-	storage.InterfaceStorage
 	mutex           sync.RWMutex
 	urls            map[string]ResultURL
 	userHistoryURLs []UserHistoryURL
@@ -23,7 +22,7 @@ type UserHistoryURL struct {
 	Hash     string
 }
 
-func Init() *Memory {
+func New() *Memory {
 	urls := make(map[string]ResultURL, 0)
 	userHistoryURLs := make([]UserHistoryURL, 0)
 	return &Memory{
@@ -60,7 +59,7 @@ func (m *Memory) GetByOriginalURL(original string) (hash string, err error) {
 
 //заглушка реализовано только для postgres
 
-func (m *Memory) AddBatchURL(urls []storage.BatchUrls) (result []storage.ResultBatchUrls, err error) {
+func (m *Memory) AddBatchURL(_ []storage.BatchUrls) (result []storage.ResultBatchUrls, err error) {
 	return result, err
 }
 

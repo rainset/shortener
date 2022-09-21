@@ -11,6 +11,13 @@ import (
 	"testing"
 )
 
+var conf = Config{
+	ServerAddress:  "localhost:8080",
+	ServerBaseURL:  "http://localhost:8080",
+	CookieHashKey:  "49a8aca82c132d8d1f430e32be1e6ff3",
+	CookieBlockKey: "49a8aca82c132d8d1f430e32be1e6ff2",
+}
+
 func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
 
 	req, err := http.NewRequest(method, ts.URL+path, nil)
@@ -70,10 +77,8 @@ func TestApp_SaveURLHandler(t *testing.T) {
 		// запускаем каждый тест
 		t.Run(tt.name, func(t *testing.T) {
 
-			s := memory.Init()
-			app := New(s)
-			app.SetConfigServerAddress("localhost:8080")
-			app.SetConfigBaseURL("http://localhost:8080")
+			s := memory.New()
+			app := New(s, conf)
 			// делаем тестовый http запрос
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", app.Config.ServerBaseURL, bytes.NewBuffer([]byte(tt.want.postData)))
@@ -97,8 +102,8 @@ func TestApp_SaveURLHandler(t *testing.T) {
 
 func TestApp_GetURLHandler(t *testing.T) {
 
-	s := memory.Init()
-	app := New(s)
+	s := memory.New()
+	app := New(s, conf)
 	hash := "ZPI0hiUZ"
 	err := app.s.AddURL(hash, "https://yandex.ru")
 	if err != nil {
@@ -169,8 +174,8 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 	for _, tt := range tests {
 		// запускаем каждый тест
 		t.Run(tt.name, func(t *testing.T) {
-			s := memory.Init()
-			app := New(s)
+			s := memory.New()
+			app := New(s, conf)
 
 			// делаем тестовый http запрос
 			w := httptest.NewRecorder()
@@ -219,8 +224,8 @@ func TestApp_GenerateShortenURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := memory.Init()
-			app := New(s)
+			s := memory.New()
+			app := New(s, conf)
 			need := fmt.Sprintf(tt.want, app.Config.ServerBaseURL)
 			if got := app.GenerateShortenURL(tt.args.shortenCode); got != need {
 				t.Errorf("GenerateShortenURL() = %v, want %v", got, need)

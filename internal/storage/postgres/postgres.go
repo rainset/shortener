@@ -14,7 +14,6 @@ import (
 )
 
 type Database struct {
-	storage.InterfaceStorage
 	pgx *pgx.Conn
 }
 type ResultURL struct {
@@ -28,7 +27,7 @@ type UserHistoryURL struct {
 	Hash     string
 }
 
-func Init(dataSourceName string) *Database {
+func New(dataSourceName string) *Database {
 	db, err := pgx.Connect(context.Background(), dataSourceName)
 
 	if db == nil && err == nil {
