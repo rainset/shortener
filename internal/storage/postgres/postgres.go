@@ -157,7 +157,7 @@ func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.Resul
 		return result, err
 	}
 
-	q := "INSERT INTO urls (hash, original) VALUES ($1, $2)"
+	q := "INSERT INTO urls (hash, original,deleted) VALUES ($1, $2, $3)"
 	_, err = tx.Prepare(context.Background(), "batch_insert", q)
 	if err != nil {
 		return result, err
@@ -166,13 +166,14 @@ func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.Resul
 	var hash string
 	for _, v := range urls {
 		hash = helper.GenerateToken(8)
-		_, err = tx.Exec(context.Background(), "batch_insert", hash, v.OriginalURL)
+		_, err = tx.Exec(context.Background(), "batch_insert", hash, v.OriginalURL, 0)
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) {
 				if pgErr.Code == pgerrcode.UniqueViolation {
 					err = nil
-					//hash, errItem := d.GetByOriginalURL(v.OriginalURL)
+					//var errItem error
+					//hash, errItem = d.GetByOriginalURL(v.OriginalURL)
 					//if errItem != nil {
 					//	return result, errItem
 					//}
@@ -195,7 +196,7 @@ func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.Resul
 	return result, nil
 }
 
-func (d *Database) DeleteBatchURL(cookieId string, hashes []string) (err error) {
+func (d *Database) DeleteBatchURL(cookieID string, hashes []string) (err error) {
 
 	ctx := context.Background()
 
@@ -211,7 +212,7 @@ func (d *Database) DeleteBatchURL(cookieId string, hashes []string) (err error) 
 	}
 
 	for _, hash := range hashes {
-		_, err = tx.Exec(ctx, "batch_update", hash, cookieId)
+		_, err = tx.Exec(ctx, "batch_update", hash, cookieID)
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) {

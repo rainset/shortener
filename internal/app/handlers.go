@@ -276,7 +276,10 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 	shortenBatchRequestList := make([]ShortenBatchRequest, 0)
 	batchURLs := make([]storage.BatchUrls, 0)
 	//var value []interface{}
-	if err := json.Unmarshal(bodyBytes, &shortenBatchRequestList); err != nil {
+	if err = json.Unmarshal(bodyBytes, &shortenBatchRequestList); err != nil {
+
+		//fmt.Println(err)
+		//fmt.Println(shortenBatchRequestList)
 		a.ShowJSONError(w, http.StatusBadRequest, "json decode error")
 		return
 	}
