@@ -63,6 +63,10 @@ func (m *Memory) AddBatchURL(_ []storage.BatchUrls) (result []storage.ResultBatc
 	return result, err
 }
 
+func (m *Memory) DeleteBatchURL(_ string, _ []string) (err error) {
+	return err
+}
+
 func (m *Memory) AddUserHistoryURL(cookieID, hash string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()

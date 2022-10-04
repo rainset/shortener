@@ -22,6 +22,7 @@ func (a *App) NewRouter() *mux.Router {
 	r.HandleFunc("/{id:[0-9a-zA-Z+]+}", a.GetURLHandler).Methods("GET")
 	r.HandleFunc("/api/shorten/batch", a.SaveURLBatchJSONHandler).Methods("POST")
 	r.HandleFunc("/api/shorten", a.SaveURLJSONHandler).Methods("POST")
+	r.HandleFunc("/api/user/urls", a.DeleteBatchURLHandler).Methods("DELETE")
 	r.HandleFunc("/api/user/urls", a.UserURLListHandler).Methods("GET")
 	r.HandleFunc("/", a.SaveURLHandler).Methods("POST")
 	return r
@@ -41,6 +42,15 @@ func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	urlValue, err := a.s.GetURL(vars["id"])
 	if urlValue == "" || err != nil {
+
+		var deleteError error
+		if errors.As(err, &deleteError) {
+			if deleteError.Error() == "deleted" {
+				w.WriteHeader(http.StatusGone)
+				return
+			}
+		}
+
 		http.Error(w, "Bad Url", http.StatusBadRequest)
 		return
 	}
@@ -114,7 +124,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	var isDBExist bool
 	err = a.s.AddURL(hash, urlValue.String())
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("a.s.AddURL:", err)
 
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -122,6 +132,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 			//fmt.Println(pgErr.Code)    // => 42601
 
 			if pgErr.Code == pgerrcode.UniqueViolation {
+				err = nil
 				isDBExist = true
 				hash, err = a.s.GetByOriginalURL(urlValue.String())
 				if err != nil {
@@ -268,11 +279,6 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 		}(r.Body)
 	}
 
-	//err = a.InitDB()
-	//if err != nil {
-	//	fmt.Println("InitDB error: ", err)
-	//}
-
 	shortenBatchRequestList := make([]ShortenBatchRequest, 0)
 	batchURLs := make([]storage.BatchUrls, 0)
 	//var value []interface{}
@@ -311,6 +317,54 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "response body error", http.StatusBadRequest)
 		return
 	}
+}
+
+func (a *App) DeleteBatchURLHandler(w http.ResponseWriter, r *http.Request) {
+
+	var bodyBytes []byte
+	var err error
+
+	if r.Body != nil {
+		bodyBytes, err = readBodyBytes(r)
+		if err != nil || len(bodyBytes) == 0 {
+			a.ShowJSONError(w, http.StatusBadRequest, "Only Json format required in request body")
+			return
+		}
+
+		defer func(Body io.ReadCloser) {
+			_ = Body.Close()
+		}(r.Body)
+	}
+
+	var mapHashes []string
+
+	if err := json.Unmarshal(bodyBytes, &mapHashes); err != nil {
+		a.ShowJSONError(w, http.StatusBadRequest, "json decode error")
+		return
+	}
+
+	chunkSize := 10
+	var chunks [][]string
+	for i := 0; i < len(mapHashes); i += chunkSize {
+		end := i + chunkSize
+
+		// necessary check to avoid slicing beyond
+		// slice capacity
+		if end > len(mapHashes) {
+			end = len(mapHashes)
+		}
+
+		chunks = append(chunks, mapHashes[i:end])
+	}
+
+	cookieID, _ := a.cookie.Get(w, r, "userID")
+
+	for _, v := range chunks {
+		err = a.s.DeleteBatchURL(cookieID, v)
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+
 }
 
 func (a *App) ShowJSONError(w http.ResponseWriter, code int, message string) {

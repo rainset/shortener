@@ -5,11 +5,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rainset/shortener/internal/cookie"
 	"github.com/rainset/shortener/internal/storage"
-	"sync"
 )
 
 type App struct {
-	mutex  sync.RWMutex
 	Config Config
 	Router *mux.Router
 	s      storage.InterfaceStorage
