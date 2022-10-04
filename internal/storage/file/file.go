@@ -120,7 +120,7 @@ func (f *File) AddURL(hash, original string) (err error) {
 	return nil
 }
 
-func (f *File) GetURL(hash string) (original string, err error) {
+func (f *File) GetURL(hash string) (resultURL storage.ResultURL, err error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
@@ -131,13 +131,14 @@ func (f *File) GetURL(hash string) (original string, err error) {
 	urls, err := consumer.RestoreStorage()
 	for _, item := range urls {
 		if item.Hash == hash {
-			return item.Original, nil
+			resultURL.Original = item.Original
+			return resultURL, nil
 		}
 	}
 	if err != nil {
 		log.Fatal(err)
 	}
-	return "", err
+	return resultURL, err
 }
 
 func (f *File) GetByOriginalURL(original string) (hash string, err error) {

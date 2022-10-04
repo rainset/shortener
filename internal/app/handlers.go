@@ -40,21 +40,16 @@ func (a *App) PingHandler(w http.ResponseWriter, _ *http.Request) {
 
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	urlValue, err := a.s.GetURL(vars["id"])
-	if urlValue == "" || err != nil {
-
-		var deleteError error
-		if errors.As(err, &deleteError) {
-			if deleteError.Error() == "deleted" {
-				w.WriteHeader(http.StatusGone)
-				return
-			}
-		}
-
+	resultURL, err := a.s.GetURL(vars["id"])
+	if resultURL.Original == "" || err != nil {
 		http.Error(w, "Bad Url", http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, urlValue, http.StatusTemporaryRedirect)
+	if resultURL.Deleted == 1 {
+		w.WriteHeader(http.StatusGone)
+		return
+	}
+	http.Redirect(w, r, resultURL.Original, http.StatusTemporaryRedirect)
 }
 
 func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +127,6 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 			//fmt.Println(pgErr.Code)    // => 42601
 
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				err = nil
 				isDBExist = true
 				hash, err = a.s.GetByOriginalURL(urlValue.String())
 				if err != nil {
@@ -142,7 +136,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err != nil {
+	if err != nil && !isDBExist {
 		http.Error(w, fmt.Sprintf("incorrect url format, hash: %s body: %s", hash, urlValue.String()), http.StatusBadRequest)
 		return
 	}
@@ -360,7 +354,7 @@ func (a *App) DeleteBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 	cookieID, _ := a.cookie.Get(w, r, "userID")
 
 	for _, v := range chunks {
-		err = a.s.DeleteBatchURL(cookieID, v)
+		_ = a.s.DeleteBatchURL(cookieID, v)
 	}
 
 	w.WriteHeader(http.StatusAccepted)

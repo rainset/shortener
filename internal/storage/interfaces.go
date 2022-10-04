@@ -26,7 +26,7 @@ type ResultHistoryURL struct {
 
 type InterfaceStorage interface {
 	AddURL(u, original string) (err error)
-	GetURL(hash string) (originalURL string, err error)
+	GetURL(hash string) (resultURL ResultURL, err error)
 	GetByOriginalURL(original string) (hash string, err error)
 	AddBatchURL([]BatchUrls) ([]ResultBatchUrls, error)
 	DeleteBatchURL(cookieID string, hashes []string) error

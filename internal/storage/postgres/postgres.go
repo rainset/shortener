@@ -85,20 +85,13 @@ func (d *Database) Close() {
 	}
 }
 
-func (d *Database) GetURL(hash string) (string, error) {
-	var item storage.ResultURL
+func (d *Database) GetURL(hash string) (resultURL storage.ResultURL, err error) {
 	q := "SELECT original,deleted FROM urls WHERE hash = $1"
-	err := d.pgx.QueryRow(context.Background(), q, hash).Scan(&item.Original, &item.Deleted)
-
+	err = d.pgx.QueryRow(context.Background(), q, hash).Scan(&resultURL.Original, &resultURL.Deleted)
 	if err != nil {
-		return item.Original, err
+		return resultURL, err
 	}
-
-	if item.Deleted == 1 {
-		return item.Original, errors.New("deleted")
-	}
-
-	return item.Original, nil
+	return resultURL, nil
 }
 
 func (d *Database) GetByOriginalURL(originalURL string) (hash string, err error) {

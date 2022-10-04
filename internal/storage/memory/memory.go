@@ -39,11 +39,12 @@ func (m *Memory) AddURL(hash, original string) error {
 	return nil
 }
 
-func (m *Memory) GetURL(hash string) (original string, err error) {
+func (m *Memory) GetURL(hash string) (resultURL storage.ResultURL, err error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 	item := m.urls[hash]
-	return item.Original, nil
+	resultURL.Original = item.Original
+	return resultURL, nil
 }
 
 func (m *Memory) GetByOriginalURL(original string) (hash string, err error) {
