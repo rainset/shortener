@@ -42,14 +42,17 @@ func (a *App) PingHandler(w http.ResponseWriter, _ *http.Request) {
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	resultURL, err := a.s.GetURL(vars["id"])
-	if resultURL.Original == "" || err != nil {
+
+	if err != nil {
 		http.Error(w, "Bad Url", http.StatusBadRequest)
 		return
 	}
-	if resultURL.Deleted == 1 {
-		w.WriteHeader(http.StatusGone)
+
+	if resultURL.Deleted == 0 {
+		http.Error(w, "Bad Url", http.StatusGone)
 		return
 	}
+
 	http.Redirect(w, r, resultURL.Original, http.StatusTemporaryRedirect)
 }
 
@@ -361,7 +364,7 @@ func (a *App) DeleteBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 		wg.Add(1)
 		go func(a *App, cookieID string, v []string) {
 			fmt.Println(v, cookieID)
-			a.s.DeleteBatchURL(cookieID, v)
+			_ = a.s.DeleteBatchURL(cookieID, v)
 			wg.Done()
 		}(a, cookieID, v)
 	}
