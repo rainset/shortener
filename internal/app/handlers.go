@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 )
 
 func (a *App) NewRouter() *mux.Router {
@@ -355,10 +356,17 @@ func (a *App) DeleteBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cookieID, _ := a.cookie.Get(w, r, "userID")
-
+	var wg sync.WaitGroup
 	for _, v := range chunks {
-		_ = a.s.DeleteBatchURL(cookieID, v)
+		wg.Add(1)
+		go func(a *App, cookieID string, v []string) {
+			fmt.Println(v, cookieID)
+			a.s.DeleteBatchURL(cookieID, v)
+			wg.Done()
+		}(a, cookieID, v)
 	}
+
+	wg.Wait() // ждём все горутины
 
 	w.WriteHeader(http.StatusAccepted)
 
