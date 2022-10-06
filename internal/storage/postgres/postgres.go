@@ -86,15 +86,16 @@ func (d *Database) Close() {
 }
 
 func (d *Database) GetURL(hash string) (resultURL storage.ResultURL, err error) {
-	q := "SELECT id,hash,original,deleted FROM urls WHERE hash = $1"
+	q := "SELECT * FROM urls WHERE hash = $1"
 	err = d.pgx.QueryRow(context.Background(), q, hash).Scan(&resultURL.ID, &resultURL.Hash, &resultURL.Original, &resultURL.Deleted)
 	if err != nil {
+		fmt.Println(resultURL, err)
 		return resultURL, err
 	}
 
-	if resultURL.Original == "" {
-		err = errors.New("not_found")
-	}
+	//if resultURL.Original == "" {
+	//	err = errors.New("not_found")
+	//}
 
 	return resultURL, err
 }
@@ -110,8 +111,8 @@ func (d *Database) GetByOriginalURL(originalURL string) (hash string, err error)
 }
 
 func (d *Database) AddURL(hash, original string) error {
-	q := "INSERT INTO urls (hash, original) VALUES ($1, $2)"
-	_, err := d.pgx.Exec(context.Background(), q, hash, original)
+	q := "INSERT INTO urls (hash, original, deleted) VALUES ($1, $2, $3)"
+	_, err := d.pgx.Exec(context.Background(), q, hash, original, 0)
 	if err != nil {
 		return err
 	}

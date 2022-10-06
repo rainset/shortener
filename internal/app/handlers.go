@@ -44,12 +44,13 @@ func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	resultURL, err := a.s.GetURL(vars["id"])
 
 	if err != nil {
-		http.Error(w, "Bad Url", http.StatusBadRequest)
+		fmt.Println(err)
+		http.Error(w, "Bad Url 1", http.StatusBadRequest)
 		return
 	}
 
 	if resultURL.Deleted == 1 {
-		http.Error(w, "Bad Url", http.StatusGone)
+		http.Error(w, "Bad Url 2", http.StatusGone)
 		return
 	}
 
