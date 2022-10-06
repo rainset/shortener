@@ -48,7 +48,7 @@ func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if resultURL.Deleted == 0 {
+	if resultURL.Deleted == 1 {
 		http.Error(w, "Bad Url", http.StatusGone)
 		return
 	}
@@ -127,9 +127,6 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
-			//fmt.Println(pgErr.Message) // => syntax error at end of input
-			//fmt.Println(pgErr.Code)    // => 42601
-
 			if pgErr.Code == pgerrcode.UniqueViolation {
 				isDBExist = true
 				hash, err = a.s.GetByOriginalURL(urlValue.String())
@@ -344,7 +341,7 @@ func (a *App) DeleteBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chunkSize := 10
+	chunkSize := 50
 	var chunks [][]string
 	for i := 0; i < len(mapHashes); i += chunkSize {
 		end := i + chunkSize
