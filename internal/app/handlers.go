@@ -360,7 +360,6 @@ func (a *App) DeleteBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, v := range chunks {
 		go func(a *App, cookieID string, v []string) {
-			fmt.Println(v, cookieID)
 			_ = a.s.DeleteBatchURL(cookieID, v)
 		}(a, cookieID, v)
 	}
