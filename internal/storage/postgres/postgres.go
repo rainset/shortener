@@ -211,22 +211,19 @@ func (d *Database) DeleteBatchURL(cookieID string, hashes []string) (err error) 
 		return err
 	}
 
-	q := "UPDATE urls u SET deleted=1 FROM user_history_urls uh WHERE uh.hash = u.hash AND uh.hash = $1 AND uh.cookie_id = $2;"
-	_, err = tx.Prepare(context.Background(), "batch_update", q)
-	if err != nil {
-		return err
-	}
+	b := &pgx.Batch{}
+
+	sqlStmt := "UPDATE urls u SET deleted=1 FROM user_history_urls uh WHERE uh.hash = u.hash AND uh.hash = $1 AND uh.cookie_id = $2;"
 
 	for _, hash := range hashes {
-		_, err = tx.Exec(ctx, "batch_update", hash, cookieID)
-		if err != nil {
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) {
-				if pgErr.Code == pgerrcode.UniqueViolation {
-					err = nil
-				}
-			}
-		}
+		b.Queue(sqlStmt, hash, cookieID)
+	}
+
+	batchResults := tx.SendBatch(ctx, b)
+
+	var batchErr error
+	for batchErr == nil {
+		_, batchErr = batchResults.Exec()
 	}
 
 	err = tx.Commit(ctx)
