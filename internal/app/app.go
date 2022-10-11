@@ -6,6 +6,7 @@ import (
 	"github.com/rainset/shortener/internal/cookie"
 	"github.com/rainset/shortener/internal/queue"
 	"github.com/rainset/shortener/internal/storage"
+	"runtime"
 )
 
 type App struct {
@@ -25,13 +26,11 @@ type Config struct {
 
 func New(storage storage.InterfaceStorage, c Config) *App {
 
-	workersCount := 1
-
 	newQueue := queue.NewDeleteURLQueue(storage)
 	go newQueue.PeriodicURLDelete()
 
-	workers := make([]*queue.DeleteURLWorker, 0, workersCount)
-	for i := 0; i < workersCount; i++ {
+	workers := make([]*queue.DeleteURLWorker, 0, runtime.NumCPU())
+	for i := 0; i < runtime.NumCPU(); i++ {
 		workers = append(workers, queue.NewDeleteURLWorker(i, newQueue, storage))
 
 	}
