@@ -44,13 +44,16 @@ func (q *DeleteURLQueue) PeriodicURLDelete() {
 			continue
 		}
 		q.mu.Lock()
-		err = q.s.DeleteBatchURL(q.urls)
+		urls := q.urls
+		q.urls = nil
+		q.mu.Unlock()
+
+		err = q.s.DeleteBatchURL(urls)
 		if err != nil {
 			fmt.Printf("PeriodicURLDelete Loop() error: %v\n", err)
 			continue
 		}
-		q.urls = nil
-		q.mu.Unlock()
+
 	}
 }
 
