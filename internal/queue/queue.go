@@ -38,7 +38,7 @@ func (q *DeleteURLQueue) PopWait() *Task {
 func (q *DeleteURLQueue) PeriodicURLDelete() {
 	var err error
 	for {
-		time.Sleep(15 * time.Second)
+		time.Sleep(10 * time.Second)
 
 		if len(q.urls) == 0 {
 			continue

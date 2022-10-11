@@ -27,7 +27,7 @@ type Config struct {
 func New(storage storage.InterfaceStorage, c Config) *App {
 
 	newQueue := queue.NewDeleteURLQueue(storage)
-	go newQueue.PeriodicURLDelete()
+	//go newQueue.PeriodicURLDelete()
 
 	workers := make([]*queue.DeleteURLWorker, 0, runtime.NumCPU())
 	for i := 0; i < runtime.NumCPU(); i++ {
@@ -49,8 +49,5 @@ func New(storage storage.InterfaceStorage, c Config) *App {
 }
 
 func (a *App) GenerateShortenURL(shortenCode string) string {
-
-	fmt.Println(a.Config)
-
 	return fmt.Sprintf("%s/%s", a.Config.ServerBaseURL, shortenCode)
 }
