@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
 	"github.com/rainset/shortener/internal/helper"
+	queue "github.com/rainset/shortener/internal/queue"
 	"github.com/rainset/shortener/internal/storage"
 	"io"
 	"net/http"
@@ -22,7 +23,7 @@ func (a *App) NewRouter() *mux.Router {
 	r.HandleFunc("/{id:[0-9a-zA-Z+]+}", a.GetURLHandler).Methods("GET")
 	r.HandleFunc("/api/shorten/batch", a.SaveURLBatchJSONHandler).Methods("POST")
 	r.HandleFunc("/api/shorten", a.SaveURLJSONHandler).Methods("POST")
-	r.HandleFunc("/api/user/urls", a.DeleteBatchURLHandler).Methods("DELETE")
+	r.HandleFunc("/api/user/urls", a.DeleteUserBatchURLHandler).Methods("DELETE")
 	r.HandleFunc("/api/user/urls", a.UserURLListHandler).Methods("GET")
 	r.HandleFunc("/", a.SaveURLHandler).Methods("POST")
 	return r
@@ -318,7 +319,7 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *App) DeleteBatchURLHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) DeleteUserBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	var bodyBytes []byte
 	var err error
@@ -335,36 +336,16 @@ func (a *App) DeleteBatchURLHandler(w http.ResponseWriter, r *http.Request) {
 		}(r.Body)
 	}
 
-	var mapHashes []string
+	var hashes []string
 
-	if err := json.Unmarshal(bodyBytes, &mapHashes); err != nil {
+	if err := json.Unmarshal(bodyBytes, &hashes); err != nil {
 		a.ShowJSONError(w, http.StatusBadRequest, "json decode error")
 		return
 	}
 
-	chunkSize := 50
-	var chunks [][]string
-	for i := 0; i < len(mapHashes); i += chunkSize {
-		end := i + chunkSize
-
-		// necessary check to avoid slicing beyond
-		// slice capacity
-		if end > len(mapHashes) {
-			end = len(mapHashes)
-		}
-
-		chunks = append(chunks, mapHashes[i:end])
-	}
-
 	cookieID, _ := a.cookie.Get(w, r, "userID")
-
-	for _, v := range chunks {
-		go func(a *App, cookieID string, v []string) {
-			_ = a.s.DeleteBatchURL(cookieID, v)
-		}(a, cookieID, v)
-	}
+	a.Queue.Push(&queue.Task{CookieID: cookieID, Hashes: hashes})
 	w.WriteHeader(http.StatusAccepted)
-
 }
 
 func (a *App) ShowJSONError(w http.ResponseWriter, code int, message string) {

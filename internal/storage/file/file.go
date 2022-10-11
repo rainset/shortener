@@ -163,7 +163,11 @@ func (f *File) AddBatchURL(_ []storage.BatchUrls) (result []storage.ResultBatchU
 	return result, err
 }
 
-func (f *File) DeleteBatchURL(_ string, _ []string) (err error) {
+func (f *File) DeleteUserBatchURL(_ string, _ []string) (err error) {
+	return err
+}
+
+func (f *File) DeleteBatchURL(_ []string) (err error) {
 	return err
 }
 

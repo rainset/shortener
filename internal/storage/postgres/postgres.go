@@ -202,7 +202,7 @@ func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.Resul
 	return result, nil
 }
 
-func (d *Database) DeleteBatchURL(cookieID string, hashes []string) (err error) {
+func (d *Database) DeleteUserBatchURL(cookieID string, hashes []string) (err error) {
 
 	ctx := context.Background()
 
@@ -217,6 +217,38 @@ func (d *Database) DeleteBatchURL(cookieID string, hashes []string) (err error) 
 
 	for _, hash := range hashes {
 		b.Queue(sqlStmt, hash, cookieID)
+	}
+
+	batchResults := tx.SendBatch(ctx, b)
+
+	var batchErr error
+	for batchErr == nil {
+		_, batchErr = batchResults.Exec()
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *Database) DeleteBatchURL(hashes []string) (err error) {
+
+	ctx := context.Background()
+
+	tx, err := d.pgx.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	b := &pgx.Batch{}
+
+	sqlStmt := "UPDATE urls u SET deleted=1 WHERE u.hash = $1;"
+
+	for _, hash := range hashes {
+		b.Queue(sqlStmt, hash)
 	}
 
 	batchResults := tx.SendBatch(ctx, b)

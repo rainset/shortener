@@ -58,7 +58,7 @@ func (m *Memory) AddBatchURL(_ []storage.BatchUrls) (result []storage.ResultBatc
 	return result, err
 }
 
-func (m *Memory) DeleteBatchURL(cookieID string, hashes []string) (err error) {
+func (m *Memory) DeleteUserBatchURL(cookieID string, hashes []string) (err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -72,6 +72,19 @@ func (m *Memory) DeleteBatchURL(cookieID string, hashes []string) (err error) {
 				m.urls[hash] = storage.ResultURL{ID: 0, Hash: hash, Original: m.urls[hash].Original, Deleted: 1}
 			}
 		}
+	}
+	return err
+}
+
+func (m *Memory) DeleteBatchURL(hashes []string) (err error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	fmt.Println("hashes", hashes)
+	fmt.Println("urls", m.urls)
+	fmt.Println("userHistoryURLs", m.userHistoryURLs)
+	for _, hash := range hashes {
+		m.urls[hash] = storage.ResultURL{ID: 0, Hash: hash, Original: m.urls[hash].Original, Deleted: 1}
 	}
 	return err
 }

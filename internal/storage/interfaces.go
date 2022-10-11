@@ -29,7 +29,8 @@ type InterfaceStorage interface {
 	GetURL(hash string) (resultURL ResultURL, err error)
 	GetByOriginalURL(original string) (hash string, err error)
 	AddBatchURL([]BatchUrls) ([]ResultBatchUrls, error)
-	DeleteBatchURL(cookieID string, hashes []string) error
+	DeleteUserBatchURL(cookieID string, hashes []string) error
+	DeleteBatchURL(hashes []string) error
 	AddUserHistoryURL(cookieID, hash string) (err error)
 	Ping() error
 	GetListUserHistoryURL(cookieID string) ([]ResultHistoryURL, error)
