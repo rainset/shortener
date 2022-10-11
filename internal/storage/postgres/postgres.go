@@ -16,11 +16,7 @@ import (
 type Database struct {
 	pgx *pgx.Conn
 }
-type ResultURL struct {
-	ID       int
-	Hash     string
-	Original string
-}
+
 type UserHistoryURL struct {
 	ID       int
 	CookieID string
@@ -89,31 +85,34 @@ func (d *Database) Close() {
 	}
 }
 
-func (d *Database) GetURL(hash string) (string, error) {
-	var item ResultURL
+func (d *Database) GetURL(hash string) (resultURL storage.ResultURL, err error) {
 	q := "SELECT * FROM urls WHERE hash = $1"
-	err := d.pgx.QueryRow(context.Background(), q, hash).Scan(&item.ID, &item.Hash, &item.Original)
-
+	err = d.pgx.QueryRow(context.Background(), q, hash).Scan(&resultURL.ID, &resultURL.Hash, &resultURL.Original, &resultURL.Deleted)
 	if err != nil {
-		return item.Original, err
+		fmt.Println(resultURL, err)
+		return resultURL, err
 	}
-	return item.Original, nil
+
+	//if resultURL.Original == "" {
+	//	err = errors.New("not_found")
+	//}
+
+	return resultURL, err
 }
 
 func (d *Database) GetByOriginalURL(originalURL string) (hash string, err error) {
-	var item ResultURL
-	q := "SELECT * FROM urls WHERE original = $1"
-	err = d.pgx.QueryRow(context.Background(), q, originalURL).Scan(&item.ID, &item.Hash, &item.Original)
+	q := "SELECT hash FROM urls WHERE original = $1"
+	err = d.pgx.QueryRow(context.Background(), q, originalURL).Scan(&hash)
 
 	if err != nil {
 		return "", err
 	}
-	return item.Hash, nil
+	return hash, nil
 }
 
 func (d *Database) AddURL(hash, original string) error {
-	q := "INSERT INTO urls (hash, original) VALUES ($1, $2)"
-	_, err := d.pgx.Exec(context.Background(), q, hash, original)
+	q := "INSERT INTO urls (hash, original, deleted) VALUES ($1, $2, $3)"
+	_, err := d.pgx.Exec(context.Background(), q, hash, original, 0)
 	if err != nil {
 		return err
 	}
@@ -164,7 +163,7 @@ func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.Resul
 		return result, err
 	}
 
-	q := "INSERT INTO urls (hash, original) VALUES ($1, $2)"
+	q := "INSERT INTO urls (hash, original,deleted) VALUES ($1, $2, $3)"
 	_, err = tx.Prepare(context.Background(), "batch_insert", q)
 	if err != nil {
 		return result, err
@@ -173,13 +172,14 @@ func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.Resul
 	var hash string
 	for _, v := range urls {
 		hash = helper.GenerateToken(8)
-		_, err = tx.Exec(context.Background(), "batch_insert", hash, v.OriginalURL)
+		_, err = tx.Exec(context.Background(), "batch_insert", hash, v.OriginalURL, 0)
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) {
 				if pgErr.Code == pgerrcode.UniqueViolation {
 					err = nil
-					//hash, errItem := d.GetByOriginalURL(v.OriginalURL)
+					//var errItem error
+					//hash, errItem = d.GetByOriginalURL(v.OriginalURL)
 					//if errItem != nil {
 					//	return result, errItem
 					//}
@@ -200,4 +200,68 @@ func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.Resul
 		return result, err
 	}
 	return result, nil
+}
+
+func (d *Database) DeleteUserBatchURL(cookieID string, hashes []string) (err error) {
+
+	ctx := context.Background()
+
+	tx, err := d.pgx.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	b := &pgx.Batch{}
+
+	sqlStmt := "UPDATE urls u SET deleted=1 FROM user_history_urls uh WHERE uh.hash = u.hash AND uh.hash = $1 AND uh.cookie_id = $2;"
+
+	for _, hash := range hashes {
+		b.Queue(sqlStmt, hash, cookieID)
+	}
+
+	batchResults := tx.SendBatch(ctx, b)
+
+	var batchErr error
+	for batchErr == nil {
+		_, batchErr = batchResults.Exec()
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *Database) DeleteBatchURL(hashes []string) (err error) {
+
+	ctx := context.Background()
+
+	tx, err := d.pgx.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	b := &pgx.Batch{}
+
+	sqlStmt := "UPDATE urls u SET deleted=1 WHERE u.hash = $1;"
+
+	for _, hash := range hashes {
+		b.Queue(sqlStmt, hash)
+	}
+
+	batchResults := tx.SendBatch(ctx, b)
+
+	var batchErr error
+	for batchErr == nil {
+		_, batchErr = batchResults.Exec()
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

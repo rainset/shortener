@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
 	"github.com/rainset/shortener/internal/helper"
+	queue "github.com/rainset/shortener/internal/queue"
 	"github.com/rainset/shortener/internal/storage"
 	"io"
 	"net/http"
@@ -22,6 +23,7 @@ func (a *App) NewRouter() *mux.Router {
 	r.HandleFunc("/{id:[0-9a-zA-Z+]+}", a.GetURLHandler).Methods("GET")
 	r.HandleFunc("/api/shorten/batch", a.SaveURLBatchJSONHandler).Methods("POST")
 	r.HandleFunc("/api/shorten", a.SaveURLJSONHandler).Methods("POST")
+	r.HandleFunc("/api/user/urls", a.DeleteUserBatchURLHandler).Methods("DELETE")
 	r.HandleFunc("/api/user/urls", a.UserURLListHandler).Methods("GET")
 	r.HandleFunc("/", a.SaveURLHandler).Methods("POST")
 	return r
@@ -39,12 +41,21 @@ func (a *App) PingHandler(w http.ResponseWriter, _ *http.Request) {
 
 func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	urlValue, err := a.s.GetURL(vars["id"])
-	if urlValue == "" || err != nil {
-		http.Error(w, "Bad Url", http.StatusBadRequest)
+	resultURL, err := a.s.GetURL(vars["id"])
+
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, urlValue, http.StatusTemporaryRedirect)
+
+	if resultURL.Deleted == 1 {
+		fmt.Println("deleted")
+		w.WriteHeader(http.StatusGone)
+		return
+	}
+
+	http.Redirect(w, r, resultURL.Original, http.StatusTemporaryRedirect)
 }
 
 func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
@@ -114,13 +125,10 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	var isDBExist bool
 	err = a.s.AddURL(hash, urlValue.String())
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("a.s.AddURL:", err)
 
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
-			//fmt.Println(pgErr.Message) // => syntax error at end of input
-			//fmt.Println(pgErr.Code)    // => 42601
-
 			if pgErr.Code == pgerrcode.UniqueViolation {
 				isDBExist = true
 				hash, err = a.s.GetByOriginalURL(urlValue.String())
@@ -131,7 +139,7 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err != nil {
+	if err != nil && !isDBExist {
 		http.Error(w, fmt.Sprintf("incorrect url format, hash: %s body: %s", hash, urlValue.String()), http.StatusBadRequest)
 		return
 	}
@@ -268,15 +276,13 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 		}(r.Body)
 	}
 
-	//err = a.InitDB()
-	//if err != nil {
-	//	fmt.Println("InitDB error: ", err)
-	//}
-
 	shortenBatchRequestList := make([]ShortenBatchRequest, 0)
 	batchURLs := make([]storage.BatchUrls, 0)
 	//var value []interface{}
-	if err := json.Unmarshal(bodyBytes, &shortenBatchRequestList); err != nil {
+	if err = json.Unmarshal(bodyBytes, &shortenBatchRequestList); err != nil {
+
+		//fmt.Println(err)
+		//fmt.Println(shortenBatchRequestList)
 		a.ShowJSONError(w, http.StatusBadRequest, "json decode error")
 		return
 	}
@@ -311,6 +317,35 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "response body error", http.StatusBadRequest)
 		return
 	}
+}
+
+func (a *App) DeleteUserBatchURLHandler(w http.ResponseWriter, r *http.Request) {
+
+	var bodyBytes []byte
+	var err error
+
+	if r.Body != nil {
+		bodyBytes, err = readBodyBytes(r)
+		if err != nil || len(bodyBytes) == 0 {
+			a.ShowJSONError(w, http.StatusBadRequest, "Only Json format required in request body")
+			return
+		}
+
+		defer func(Body io.ReadCloser) {
+			_ = Body.Close()
+		}(r.Body)
+	}
+
+	var hashes []string
+
+	if err := json.Unmarshal(bodyBytes, &hashes); err != nil {
+		a.ShowJSONError(w, http.StatusBadRequest, "json decode error")
+		return
+	}
+
+	cookieID, _ := a.cookie.Get(w, r, "userID")
+	a.Queue.Push(&queue.Task{CookieID: cookieID, Hashes: hashes})
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (a *App) ShowJSONError(w http.ResponseWriter, code int, message string) {
