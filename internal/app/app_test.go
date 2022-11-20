@@ -3,12 +3,14 @@ package app
 import (
 	"bytes"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
 	"github.com/rainset/shortener/internal/storage/memory"
 	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -170,6 +172,32 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 			}
 			//require.Equal(t, tt.want.response, string(data))
 
+		})
+	}
+}
+
+func Test_readBodyBytes(t *testing.T) {
+	type args struct {
+		c *gin.Context
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []byte
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := readBodyBytes(tt.args.c)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("readBodyBytes() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("readBodyBytes() got = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
