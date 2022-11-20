@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
-	gzip_gin "github.com/gin-gonic/contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
@@ -23,7 +22,7 @@ import (
 func (a *App) NewRouter() *gin.Engine {
 
 	r := gin.Default()
-	r.Use(gzip_gin.Gzip(gzip_gin.DefaultCompression))
+	//r.Use(gzip_gin.Gzip(gzip_gin.DefaultCompression))
 
 	store := cookie.NewStore([]byte(a.Config.CookieHashKey), []byte(a.Config.CookieBlockKey))
 	store.Options(sessions.Options{MaxAge: 3600})
@@ -79,11 +78,16 @@ func (a *App) UserURLListHandler(c *gin.Context) {
 		OriginalURL string `json:"original_url"`
 	}
 
-	ss := sessions.Default(c)
-	session := ss.Get("sessid").(Session)
+	var userHistoryURLs []storage.ResultHistoryURL
+	var err error
+	var userID string
 
-	userID := session.UserID
-	userHistoryURLs, err := a.s.GetListUserHistoryURL(userID)
+	ss := sessions.Default(c)
+	session, ok := ss.Get("sessid").(Session)
+	if ok {
+		userID = session.UserID
+		userHistoryURLs, err = a.s.GetListUserHistoryURL(userID)
+	}
 
 	if err != nil || len(userID) == 0 || len(userHistoryURLs) == 0 {
 		c.Header("Content-Type", "application/json")
