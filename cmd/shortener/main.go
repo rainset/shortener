@@ -1,16 +1,13 @@
 package main
 
 import (
-	"compress/gzip"
+	"encoding/gob"
 	"flag"
-	"github.com/gorilla/handlers"
 	"github.com/rainset/shortener/internal/app"
 	"github.com/rainset/shortener/internal/storage"
 	"github.com/rainset/shortener/internal/storage/file"
 	"github.com/rainset/shortener/internal/storage/memory"
 	"github.com/rainset/shortener/internal/storage/postgres"
-	"log"
-	"net/http"
 	"os"
 )
 
@@ -22,6 +19,9 @@ var (
 )
 
 func init() {
+	// регистрация структуры для сессии
+	gob.Register(app.Session{})
+
 	serverAddress = flag.String("a", os.Getenv("SERVER_ADDRESS"), "string server name, ex:[localhost:8080]")
 	baseURL = flag.String("b", os.Getenv("BASE_URL"), "string base url, ex:[http://localhost]")
 	fileStoragePath = flag.String("f", os.Getenv("FILE_STORAGE_PATH"), "string file storage path, ex:[/file_storage.log]")
@@ -60,9 +60,9 @@ func main() {
 	application := app.New(s, conf)
 
 	r := application.NewRouter()
-	http.Handle("/", r)
-
-	log.Printf("Listening %s ...", *serverAddress)
-	log.Fatal(http.ListenAndServe(*serverAddress, handlers.CompressHandlerLevel(r, gzip.BestSpeed)))
+	err := r.Run(conf.ServerAddress)
+	if err != nil {
+		panic(err)
+	}
 
 }

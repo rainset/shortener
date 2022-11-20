@@ -24,6 +24,10 @@ type Config struct {
 	CookieBlockKey string
 }
 
+type Session struct {
+	UserID string
+}
+
 func New(storage storage.InterfaceStorage, c Config) *App {
 
 	newQueue := queue.NewDeleteURLQueue(storage)

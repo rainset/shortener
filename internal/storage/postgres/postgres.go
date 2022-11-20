@@ -44,11 +44,6 @@ func New(dataSourceName string) *Database {
 }
 
 func CreateTables(db *pgx.Conn) error {
-
-	//if db == nil {
-	//	return errors.New("create tables, err connection")
-	//}
-
 	c, ioErr := ioutil.ReadFile("migrations/tables.sql")
 	if ioErr != nil {
 		log.Println("read file tables: ", ioErr)
