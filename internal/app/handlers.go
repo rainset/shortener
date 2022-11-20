@@ -1,11 +1,13 @@
 package app
 
 import (
+	"bytes"
+	"compress/gzip"
 	"errors"
 	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
-	"github.com/gin-gonic/contrib/gzip"
+	gzip_gin "github.com/gin-gonic/contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
@@ -15,12 +17,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 func (a *App) NewRouter() *gin.Engine {
 
 	r := gin.Default()
-	r.Use(gzip.Gzip(gzip.DefaultCompression))
+	r.Use(gzip_gin.Gzip(gzip_gin.DefaultCompression))
 
 	store := cookie.NewStore([]byte(a.Config.CookieHashKey), []byte(a.Config.CookieBlockKey))
 	store.Options(sessions.Options{MaxAge: 3600})
@@ -117,7 +120,7 @@ func (a *App) SaveURLHandler(c *gin.Context) {
 		cookieuserID = genId
 	}
 
-	bodyBytes, err = io.ReadAll(c.Request.Body)
+	bodyBytes, err = readBodyBytes(c)
 
 	if err != nil || len(bodyBytes) == 0 {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": "body error"})
@@ -282,4 +285,32 @@ func (a *App) DeleteUserBatchURLHandler(c *gin.Context) {
 
 	c.Status(http.StatusAccepted)
 	return
+}
+
+func readBodyBytes(c *gin.Context) ([]byte, error) {
+	// Read body
+	bodyBytes, readErr := io.ReadAll(c.Request.Body)
+	if readErr != nil {
+		return nil, readErr
+	}
+
+	// GZIP decode
+	if strings.Contains(c.GetHeader("Content-Encoding"), "gzip") {
+		r, gzErr := gzip.NewReader(io.NopCloser(bytes.NewBuffer(bodyBytes)))
+		if gzErr != nil {
+			return nil, gzErr
+		}
+		defer func(r *gzip.Reader) {
+			_ = r.Close()
+		}(r)
+
+		bb, err2 := io.ReadAll(r)
+		if err2 != nil {
+			return nil, err2
+		}
+		return bb, nil
+	} else {
+		// Not compressed
+		return bodyBytes, nil
+	}
 }

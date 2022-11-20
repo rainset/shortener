@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"github.com/rainset/shortener/internal/storage/memory"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -35,89 +36,63 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 }
 
 func TestApp_SaveURLHandler(t *testing.T) {
-	// определяем структуру теста
-	type want struct {
-		code     int
-		response string
-		postData string
-	}
 
-	// создаём массив тестов: имя и желаемый результат
-	tests := []struct {
-		name string
-		want want
-	}{
-		// определяем все тесты
-		{
-			name: "POST Добавление ссылки",
-			want: want{
-				code:     201,
-				response: `SZfLgeBS`,
-				postData: `https://yandex.ru`,
-			},
-		},
-		{
-			name: "POST Пустой запрос",
-			want: want{
-				code:     400,
-				response: ``,
-				postData: ``,
-			},
-		},
-		{
-			name: "POST Добавление ссылки",
-			want: want{
-				code:     201,
-				response: `SZfLgeBS`,
-				postData: `https://yandex.ru`,
-			},
-		},
-	}
-	for _, tt := range tests {
-		// запускаем каждый тест
-		t.Run(tt.name, func(t *testing.T) {
+	t.Run("POST add url", func(t *testing.T) {
+		s := memory.New()
+		app := New(s, conf)
+		r := app.NewRouter()
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", app.Config.ServerBaseURL+"/", bytes.NewBuffer([]byte("http://yandex.ru")))
+		r.ServeHTTP(w, req)
 
-			s := memory.New()
-			app := New(s, conf)
-			// делаем тестовый http запрос
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", app.Config.ServerBaseURL, bytes.NewBuffer([]byte(tt.want.postData)))
+		res := w.Result()
+		defer res.Body.Close()
 
-			app.SaveURLHandler(w, r)
+		// проверяем код ответа
+		require.Equal(t, 201, w.Code)
+		//assert.Equal(t, "pong", w.Body.String())
+	})
 
-			res := w.Result()
-			defer res.Body.Close()
+	t.Run("POST empty body", func(t *testing.T) {
+		s := memory.New()
+		app := New(s, conf)
+		r := app.NewRouter()
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", app.Config.ServerBaseURL+"/", bytes.NewBuffer([]byte("")))
+		r.ServeHTTP(w, req)
 
-			// проверяем код ответа
-			require.Equal(t, tt.want.code, res.StatusCode)
+		res := w.Result()
+		defer res.Body.Close()
 
-			// получаем и проверяем тело запроса
-			_, err := io.ReadAll(res.Body)
-			if err != nil {
-				t.Fatal(err)
-			}
-		})
-	}
+		// проверяем код ответа
+		require.Equal(t, 400, w.Code)
+		//assert.Equal(t, "pong", w.Body.String())
+	})
+
 }
 
 func TestApp_GetURLHandler(t *testing.T) {
 
 	s := memory.New()
 	app := New(s, conf)
-	hash := "ZPI0hiUZ"
-	err := app.s.AddURL(hash, "https://yandex.ru")
-	if err != nil {
-		t.Error(err)
-	}
-	r := app.NewRouter()
-	ts := httptest.NewServer(r)
-	defer ts.Close()
 
-	resp, _ := testRequest(t, ts, "GET", "/ZPI0hiUZ")
-	defer resp.Body.Close()
+	client := resty.New()
+	client.SetRedirectPolicy(resty.NoRedirectPolicy())
 
-	//assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode, "statusCreated")
+	longURL := "http://yandex.ru"
 
+	resp, _ := client.R().
+		SetBody(longURL).
+		Post(app.Config.ServerBaseURL)
+
+	url1 := resp.String()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode())
+
+	resp2, _ := client.R().Get(url1)
+
+	require.Equal(t, http.StatusTemporaryRedirect, resp2.StatusCode())
+	require.Equal(t, longURL, resp2.Header().Get("Location"))
 }
 
 func TestApp_SaveURLJSONHandler(t *testing.T) {
@@ -179,9 +154,9 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 
 			// делаем тестовый http запрос
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", fmt.Sprintf(tt.request.url, app.Config.ServerBaseURL), bytes.NewBuffer([]byte(tt.request.data)))
-
-			app.SaveURLJSONHandler(w, r)
+			req := httptest.NewRequest("POST", fmt.Sprintf(tt.request.url, app.Config.ServerBaseURL), bytes.NewBuffer([]byte(tt.request.data)))
+			r := app.NewRouter()
+			r.ServeHTTP(w, req)
 
 			result := w.Result()
 			result.Body.Close()
@@ -195,41 +170,6 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 			}
 			//require.Equal(t, tt.want.response, string(data))
 
-		})
-	}
-}
-
-func TestApp_ShowJSONError(t *testing.T) {
-	w := httptest.NewRecorder()
-	a := &App{}
-	a.ShowJSONError(w, 400, "Only Json format required in request body")
-}
-
-func TestApp_GenerateShortenURL(t *testing.T) {
-	type args struct {
-		shortenCode string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "Generate shorten link",
-			args: args{
-				shortenCode: "tescode",
-			},
-			want: "%s/tescode",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := memory.New()
-			app := New(s, conf)
-			need := fmt.Sprintf(tt.want, app.Config.ServerBaseURL)
-			if got := app.GenerateShortenURL(tt.args.shortenCode); got != need {
-				t.Errorf("GenerateShortenURL() = %v, want %v", got, need)
-			}
 		})
 	}
 }
