@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/rainset/shortener/internal/cookie"
 	"github.com/rainset/shortener/internal/queue"
 	"github.com/rainset/shortener/internal/storage"
 	"runtime"
@@ -13,7 +12,6 @@ type App struct {
 	Config Config
 	Router *mux.Router
 	s      storage.InterfaceStorage
-	cookie *cookie.SCookie
 	Queue  *queue.DeleteURLQueue
 }
 
@@ -45,7 +43,6 @@ func New(storage storage.InterfaceStorage, c Config) *App {
 
 	return &App{
 		s:      storage,
-		cookie: cookie.New(c.CookieHashKey, c.CookieBlockKey),
 		Config: c,
 		Queue:  newQueue,
 	}

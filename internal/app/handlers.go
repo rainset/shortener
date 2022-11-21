@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
-	gzip_gin "github.com/gin-gonic/contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
@@ -23,7 +22,7 @@ import (
 func (a *App) NewRouter() *gin.Engine {
 
 	r := gin.Default()
-	r.Use(gzip_gin.Gzip(gzip_gin.DefaultCompression))
+	//r.Use(gzip_gin.Gzip(gzip_gin.DefaultCompression))
 
 	store := cookie.NewStore([]byte(a.Config.CookieHashKey), []byte(a.Config.CookieBlockKey))
 	store.Options(sessions.Options{MaxAge: 3600})
