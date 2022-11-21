@@ -283,7 +283,6 @@ func (a *App) DeleteUserBatchURLHandler(c *gin.Context) {
 	}
 
 	c.Status(http.StatusAccepted)
-	return
 }
 
 func readBodyBytes(c *gin.Context) ([]byte, error) {
