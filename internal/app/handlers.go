@@ -211,7 +211,7 @@ func (a *App) SaveURLJSONHandler(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": "incorrect url format"})
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
@@ -221,13 +221,9 @@ func (a *App) SaveURLJSONHandler(c *gin.Context) {
 	if isDBExist {
 		c.JSON(http.StatusConflict, shortenData)
 		return
-	} else if err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
-	} else {
-		c.JSON(http.StatusCreated, shortenData)
 	}
 
+	c.JSON(http.StatusCreated, shortenData)
 }
 
 func (a *App) SaveURLBatchJSONHandler(c *gin.Context) {
@@ -291,13 +287,11 @@ func (a *App) DeleteUserBatchURLHandler(c *gin.Context) {
 }
 
 func readBodyBytes(c *gin.Context) ([]byte, error) {
-	// Read body
 	bodyBytes, readErr := io.ReadAll(c.Request.Body)
 	if readErr != nil {
 		return nil, readErr
 	}
 
-	// GZIP decode
 	if strings.Contains(c.GetHeader("Content-Encoding"), "gzip") {
 		r, gzErr := gzip.NewReader(io.NopCloser(bytes.NewBuffer(bodyBytes)))
 		if gzErr != nil {
@@ -312,8 +306,7 @@ func readBodyBytes(c *gin.Context) ([]byte, error) {
 			return nil, err2
 		}
 		return bb, nil
-	} else {
-		// Not compressed
-		return bodyBytes, nil
 	}
+	// Not compressed
+	return bodyBytes, nil
 }
