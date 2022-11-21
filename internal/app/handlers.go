@@ -3,10 +3,11 @@ package app
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gorilla/mux"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
 	"github.com/rainset/shortener/internal/helper"
@@ -15,68 +16,85 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
-func (a *App) NewRouter() *mux.Router {
-	r := mux.NewRouter()
-	r.HandleFunc("/ping", a.PingHandler).Methods("GET")
-	r.HandleFunc("/{id:[0-9a-zA-Z+]+}", a.GetURLHandler).Methods("GET")
-	r.HandleFunc("/api/shorten/batch", a.SaveURLBatchJSONHandler).Methods("POST")
-	r.HandleFunc("/api/shorten", a.SaveURLJSONHandler).Methods("POST")
-	r.HandleFunc("/api/user/urls", a.DeleteUserBatchURLHandler).Methods("DELETE")
-	r.HandleFunc("/api/user/urls", a.UserURLListHandler).Methods("GET")
-	r.HandleFunc("/", a.SaveURLHandler).Methods("POST")
+func (a *App) NewRouter() *gin.Engine {
+
+	r := gin.Default()
+	//r.Use(gzip_gin.Gzip(gzip_gin.DefaultCompression))
+
+	store := cookie.NewStore([]byte(a.Config.CookieHashKey), []byte(a.Config.CookieBlockKey))
+	store.Options(sessions.Options{MaxAge: 3600})
+	r.Use(sessions.Sessions("sessid", store))
+
+	r.GET("/ping", a.PingHandler)
+	r.GET("/:id", a.GetURLHandler)
+	r.POST("/api/shorten/batch", a.SaveURLBatchJSONHandler)
+	r.POST("/api/shorten", a.SaveURLJSONHandler)
+	r.DELETE("/api/user/urls", a.DeleteUserBatchURLHandler)
+	r.GET("/api/user/urls", a.UserURLListHandler)
+	r.POST("/", a.SaveURLHandler)
+
+	r.NoRoute(func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"code": http.StatusNotFound})
+	})
 	return r
 }
 
-func (a *App) PingHandler(w http.ResponseWriter, _ *http.Request) {
+func (a *App) PingHandler(c *gin.Context) {
 	err := a.s.Ping()
 	if err != nil {
 		fmt.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"code": http.StatusInternalServerError, "err": "ping error"})
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	c.JSON(http.StatusOK, gin.H{"code": http.StatusOK})
 }
 
-func (a *App) GetURLHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	resultURL, err := a.s.GetURL(vars["id"])
+func (a *App) GetURLHandler(c *gin.Context) {
+
+	id := c.Param("id")
+	resultURL, err := a.s.GetURL(id)
 
 	if err != nil {
 		fmt.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
 	if resultURL.Deleted == 1 {
-		fmt.Println("deleted")
-		w.WriteHeader(http.StatusGone)
+		c.AbortWithStatus(http.StatusGone)
 		return
 	}
+	c.Redirect(http.StatusTemporaryRedirect, resultURL.Original)
 
-	http.Redirect(w, r, resultURL.Original, http.StatusTemporaryRedirect)
 }
 
-func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) UserURLListHandler(c *gin.Context) {
 
 	type ListURL struct {
 		ShortURL    string `json:"short_url"`
 		OriginalURL string `json:"original_url"`
 	}
 
-	userID, _ := a.cookie.Get(w, r, "userID")
-	userHistoryURLs, err := a.s.GetListUserHistoryURL(userID)
+	var userHistoryURLs []storage.ResultHistoryURL
+	var err error
+	var userID string
 
-	fmt.Println(userID, err)
-	fmt.Println("UserURLListHandler", userHistoryURLs)
+	ss := sessions.Default(c)
+	session, ok := ss.Get("sessid").(Session)
+	if ok {
+		userID = session.UserID
+		userHistoryURLs, err = a.s.GetListUserHistoryURL(userID)
+	}
+
 	if err != nil || len(userID) == 0 || len(userHistoryURLs) == 0 {
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNoContent)
-
+		c.Header("Content-Type", "application/json")
+		c.AbortWithStatus(http.StatusNoContent)
 		return
 	}
+
 	list := make([]ListURL, 0)
 
 	for _, item := range userHistoryURLs {
@@ -86,35 +104,32 @@ func (a *App) UserURLListHandler(w http.ResponseWriter, r *http.Request) {
 		ShortURL := fmt.Sprintf("%s/%s", a.Config.ServerBaseURL, item.Hash)
 		list = append(list, ListURL{ShortURL: ShortURL, OriginalURL: item.Original})
 	}
-
-	data, err := json.Marshal(list)
-	if err != nil {
-		panic(err)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	_, writeError := w.Write(data)
-	if writeError != nil {
-		http.Error(w, "response body error", http.StatusBadRequest)
-		return
-	}
+	c.JSON(http.StatusOK, list)
 }
 
-func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) SaveURLHandler(c *gin.Context) {
 
+	var cookieuserID string
 	var bodyBytes []byte
 	var err error
-	bodyBytes, err = readBodyBytes(r)
+
+	ss := sessions.Default(c)
+	session, ok := ss.Get("sessid").(Session)
+	if ok {
+		cookieuserID = session.UserID
+	} else {
+		genID := helper.GenerateUniqueuserID()
+		ss.Set("sessid", Session{UserID: genID})
+		_ = ss.Save()
+		cookieuserID = genID
+	}
+
+	bodyBytes, err = readBodyBytes(c)
 
 	if err != nil || len(bodyBytes) == 0 {
-		http.Error(w, "Body reading error", http.StatusBadRequest)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": "body error"})
 		return
 	}
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(r.Body)
 
 	urlValue, err := url.ParseRequestURI(string(bodyBytes))
 	if err != nil {
@@ -140,67 +155,41 @@ func (a *App) SaveURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil && !isDBExist {
-		http.Error(w, fmt.Sprintf("incorrect url format, hash: %s body: %s", hash, urlValue.String()), http.StatusBadRequest)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": fmt.Sprintf("incorrect url format, hash: %s body: %s", hash, urlValue.String())})
 		return
 	}
 
 	shortenURL := a.GenerateShortenURL(hash)
-	generateduserID := helper.GenerateUniqueuserID()
-	cookieuserID, err := a.cookie.Get(w, r, "userID")
-	if err != nil {
-		fmt.Println(err)
-	}
-	if len(cookieuserID) == 0 {
-		a.cookie.Set(w, r, "userID", generateduserID)
-		cookieuserID = generateduserID
-	}
 
 	err = a.s.AddUserHistoryURL(cookieuserID, hash)
 
 	if isDBExist {
-		w.WriteHeader(http.StatusConflict)
+		c.String(http.StatusConflict, "%s", shortenURL)
+		return
 	} else if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	} else {
-		w.WriteHeader(http.StatusCreated)
-	}
-
-	_, writeError := w.Write([]byte(shortenURL))
-	if writeError != nil {
-		http.Error(w, "response body error", http.StatusBadRequest)
+		c.String(http.StatusCreated, "%s", shortenURL)
 		return
 	}
 }
 
-func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) SaveURLJSONHandler(c *gin.Context) {
 
-	type ShortenRequest struct {
-		URL string `json:"url"`
-	}
-	type ShortenResponse struct {
-		Result string `json:"result"`
-	}
-
-	var bodyBytes []byte
 	var err error
 
-	if r.Body != nil {
-		bodyBytes, err = readBodyBytes(r)
-		if err != nil || len(bodyBytes) == 0 {
-			a.ShowJSONError(w, http.StatusBadRequest, "Only Json format required in request body")
-			return
-		}
-
-		defer func(Body io.ReadCloser) {
-			_ = Body.Close()
-		}(r.Body)
+	type requestBody struct {
+		URL string `json:"url"`
 	}
-	fmt.Println("")
-	value := ShortenRequest{}
-	if err := json.Unmarshal(bodyBytes, &value); err != nil {
-		a.ShowJSONError(w, http.StatusBadRequest, "Only Json format required in request body")
+	type responseBody struct {
+		Result string `json:"result"`
+	}
+	value := requestBody{}
+
+	err = c.BindJSON(&value)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": "Only Json format required in request body"})
 		return
 	}
 
@@ -222,34 +211,22 @@ func (a *App) SaveURLJSONHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		http.Error(w, "incorrect url format", http.StatusBadRequest)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
 	shortenURL := a.GenerateShortenURL(hash)
-	shortenData := ShortenResponse{Result: shortenURL}
-	shortenJSON, err := json.Marshal(shortenData)
-
-	w.Header().Set("Content-Type", "application/json")
+	shortenData := responseBody{Result: shortenURL}
 
 	if isDBExist {
-		w.WriteHeader(http.StatusConflict)
-	} else if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	} else {
-		w.WriteHeader(http.StatusCreated)
-	}
-
-	_, writeError := w.Write(shortenJSON)
-	if writeError != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.JSON(http.StatusConflict, shortenData)
 		return
 	}
 
+	c.JSON(http.StatusCreated, shortenData)
 }
 
-func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) SaveURLBatchJSONHandler(c *gin.Context) {
 
 	type ShortenBatchRequest struct {
 		CorrelationID string `json:"correlation_id"`
@@ -261,41 +238,24 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 		ShortURL      string `json:"short_url"`
 	}
 
-	var bodyBytes []byte
 	var err error
 
-	if r.Body != nil {
-		bodyBytes, err = readBodyBytes(r)
-		if err != nil || len(bodyBytes) == 0 {
-			a.ShowJSONError(w, http.StatusBadRequest, "Only Json format required in request body")
-			return
-		}
+	requestBody := make([]ShortenBatchRequest, 0)
 
-		defer func(Body io.ReadCloser) {
-			_ = Body.Close()
-		}(r.Body)
-	}
-
-	shortenBatchRequestList := make([]ShortenBatchRequest, 0)
-	batchURLs := make([]storage.BatchUrls, 0)
-	//var value []interface{}
-	if err = json.Unmarshal(bodyBytes, &shortenBatchRequestList); err != nil {
-
-		//fmt.Println(err)
-		//fmt.Println(shortenBatchRequestList)
-		a.ShowJSONError(w, http.StatusBadRequest, "json decode error")
+	err = c.BindJSON(&requestBody)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": "Only Json format required in request body"})
 		return
 	}
-	fmt.Println(shortenBatchRequestList)
 
-	for _, v := range shortenBatchRequestList {
+	batchURLs := make([]storage.BatchUrls, 0)
+	for _, v := range requestBody {
 		batchURLs = append(batchURLs, storage.BatchUrls{CorrelationID: v.CorrelationID, OriginalURL: v.OriginalURL})
 	}
 
 	result, err := a.s.AddBatchURL(batchURLs)
 	if err != nil {
-		fmt.Println(err)
-		a.ShowJSONError(w, http.StatusBadRequest, "db save error")
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": "db save error"})
 		return
 	}
 
@@ -304,82 +264,34 @@ func (a *App) SaveURLBatchJSONHandler(w http.ResponseWriter, r *http.Request) {
 		response = append(response, ShortenBatchResponse{ShortURL: a.GenerateShortenURL(v.Hash), CorrelationID: v.CorrelationID})
 	}
 
-	shortenJSON, err := json.Marshal(response)
-	if err != nil {
-		http.Error(w, "json response error", http.StatusBadRequest)
-		return
-	}
-	fmt.Println(shortenJSON, string(shortenJSON))
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_, writeError := w.Write(shortenJSON)
-	if writeError != nil {
-		http.Error(w, "response body error", http.StatusBadRequest)
-		return
-	}
+	c.JSON(http.StatusCreated, response)
 }
 
-func (a *App) DeleteUserBatchURLHandler(w http.ResponseWriter, r *http.Request) {
-
-	var bodyBytes []byte
+func (a *App) DeleteUserBatchURLHandler(c *gin.Context) {
 	var err error
-
-	if r.Body != nil {
-		bodyBytes, err = readBodyBytes(r)
-		if err != nil || len(bodyBytes) == 0 {
-			a.ShowJSONError(w, http.StatusBadRequest, "Only Json format required in request body")
-			return
-		}
-
-		defer func(Body io.ReadCloser) {
-			_ = Body.Close()
-		}(r.Body)
-	}
-
 	var hashes []string
 
-	if err := json.Unmarshal(bodyBytes, &hashes); err != nil {
-		a.ShowJSONError(w, http.StatusBadRequest, "json decode error")
-		return
+	ss := sessions.Default(c)
+	session, ok := ss.Get("sessid").(Session)
+	if ok {
+		err = c.BindJSON(&hashes)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": "Only Json format required in request body"})
+			return
+		}
+		a.Queue.Push(&queue.Task{CookieID: session.UserID, Hashes: hashes})
 	}
 
-	cookieID, _ := a.cookie.Get(w, r, "userID")
-	a.Queue.Push(&queue.Task{CookieID: cookieID, Hashes: hashes})
-	w.WriteHeader(http.StatusAccepted)
+	c.Status(http.StatusAccepted)
 }
 
-func (a *App) ShowJSONError(w http.ResponseWriter, code int, message string) {
-
-	type ErrorResponse struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-	}
-
-	data, err := json.Marshal(ErrorResponse{Code: code, Message: message})
-	if err != nil {
-		panic(err)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-
-	_, writeError := w.Write(data)
-	if writeError != nil {
-		panic(writeError)
-	}
-}
-
-func readBodyBytes(r *http.Request) ([]byte, error) {
-	// Read body
-	bodyBytes, readErr := io.ReadAll(r.Body)
+func readBodyBytes(c *gin.Context) ([]byte, error) {
+	bodyBytes, readErr := io.ReadAll(c.Request.Body)
 	if readErr != nil {
 		return nil, readErr
 	}
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(r.Body)
 
-	// GZIP decode
-	if len(r.Header["Content-Encoding"]) > 0 && r.Header["Content-Encoding"][0] == "gzip" {
+	if strings.Contains(c.GetHeader("Content-Encoding"), "gzip") {
 		r, gzErr := gzip.NewReader(io.NopCloser(bytes.NewBuffer(bodyBytes)))
 		if gzErr != nil {
 			return nil, gzErr
@@ -393,8 +305,7 @@ func readBodyBytes(r *http.Request) ([]byte, error) {
 			return nil, err2
 		}
 		return bb, nil
-	} else {
-		// Not compressed
-		return bodyBytes, nil
 	}
+	// Not compressed
+	return bodyBytes, nil
 }
