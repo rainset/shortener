@@ -3,7 +3,6 @@ package app
 import (
 	"bytes"
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"github.com/rainset/shortener/internal/storage/memory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,22 +17,6 @@ var conf = Config{
 	ServerBaseURL:  "http://localhost:8080",
 	CookieHashKey:  "49a8aca82c132d8d1f430e32be1e6ff3",
 	CookieBlockKey: "49a8aca82c132d8d1f430e32be1e6ff2",
-}
-
-func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
-
-	req, err := http.NewRequest(method, ts.URL+path, nil)
-	require.NoError(t, err)
-
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-
-	respBody, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-
-	defer resp.Body.Close()
-
-	return resp, string(respBody)
 }
 
 func TestApp_SaveURLHandler(t *testing.T) {
@@ -77,25 +60,15 @@ func TestApp_GetURLHandler(t *testing.T) {
 	s := memory.New()
 	app := New(s, conf)
 
-	client1 := resty.New()
-	client1.SetRedirectPolicy(resty.NoRedirectPolicy())
+	_ = app.s.AddURL("testhash", "http://test.com")
 
-	longURL := "http://yandex.ru"
+	router := app.NewRouter()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/testhash", nil)
+	router.ServeHTTP(w, req)
 
-	resp, _ := client1.R().
-		SetBody(longURL).
-		Post(app.Config.ServerBaseURL)
+	assert.Equal(t, http.StatusTemporaryRedirect, w.Code)
 
-	url1 := resp.String()
-
-	require.Equal(t, http.StatusCreated, resp.StatusCode())
-
-	client2 := resty.New()
-	client2.SetRedirectPolicy(resty.NoRedirectPolicy())
-	resp2, _ := client2.R().Get(url1)
-
-	require.Equal(t, http.StatusTemporaryRedirect, resp2.StatusCode())
-	require.Equal(t, longURL, resp2.Header().Get("Location"))
 }
 
 func TestApp_SaveURLJSONHandler(t *testing.T) {
