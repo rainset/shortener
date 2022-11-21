@@ -272,20 +272,19 @@ func (a *App) SaveURLBatchJSONHandler(c *gin.Context) {
 }
 
 func (a *App) DeleteUserBatchURLHandler(c *gin.Context) {
-
 	var err error
-	ss := sessions.Default(c)
-	session := ss.Get("sessid").(Session)
-
 	var hashes []string
 
-	err = c.BindJSON(&hashes)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": "Only Json format required in request body"})
-		return
+	ss := sessions.Default(c)
+	session, ok := ss.Get("sessid").(Session)
+	if ok {
+		err = c.BindJSON(&hashes)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": "Only Json format required in request body"})
+			return
+		}
+		a.Queue.Push(&queue.Task{CookieID: session.UserID, Hashes: hashes})
 	}
-
-	a.Queue.Push(&queue.Task{CookieID: session.UserID, Hashes: hashes})
 
 	c.Status(http.StatusAccepted)
 	return

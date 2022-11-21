@@ -182,15 +182,39 @@ func Test_readBodyBytes(t *testing.T) {
 }
 
 func TestApp_DeleteUserBatchURLHandler(t *testing.T) {
+	s := memory.New()
+	app := New(s, conf)
 
+	router := app.NewRouter()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("DELETE", "/api/user/urls", bytes.NewBuffer([]byte(`["hashtest"]`)))
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusAccepted, w.Code)
 }
 
 func TestApp_SaveURLBatchJSONHandler(t *testing.T) {
+	s := memory.New()
+	app := New(s, conf)
 
+	router := app.NewRouter()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/shorten/batch", bytes.NewBuffer([]byte(`[{"correlation_id":"222","original_url":"http://example.com"}]`)))
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
 }
 
 func TestApp_UserURLListHandler(t *testing.T) {
+	s := memory.New()
+	app := New(s, conf)
 
+	router := app.NewRouter()
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/user/urls", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
 }
 
 func TestApp_NewRouter(t *testing.T) {
