@@ -52,7 +52,7 @@ func main() {
 			arrBatch = append(arrBatch, testBatchData{CorrelationID: strconv.Itoa(c), OriginalURL: fmt.Sprintf("http://ya.ru/%d/%s", c, randS)})
 		}
 
-		resp3, err := client.R().SetBody(arrBatch).Post("http://localhost:8080/api/shorten/batch")
+		resp3, _ := client.R().SetBody(arrBatch).Post("http://localhost:8080/api/shorten/batch")
 		log.Println("resp3", resp3.StatusCode(), resp3)
 
 		//resp4, err := client.R().Get("http://localhost:8080/api/user/urls")
