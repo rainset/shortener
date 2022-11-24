@@ -2,11 +2,12 @@ package file
 
 import (
 	"encoding/json"
-	"github.com/rainset/shortener/internal/storage"
 	"io"
 	"log"
 	"os"
 	"sync"
+
+	"github.com/rainset/shortener/internal/storage"
 )
 
 type File struct {

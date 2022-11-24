@@ -5,18 +5,20 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
+
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
+
 	"github.com/rainset/shortener/internal/helper"
 	queue "github.com/rainset/shortener/internal/queue"
 	"github.com/rainset/shortener/internal/storage"
-	"io"
-	"net/http"
-	"net/url"
-	"strings"
 )
 
 func (a *App) NewRouter() *gin.Engine {

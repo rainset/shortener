@@ -1,9 +1,11 @@
 package app
 
 import (
-	"github.com/rainset/shortener/internal/storage/memory"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/rainset/shortener/internal/storage/memory"
 )
 
 func TestApp_GenerateShortenURL(t *testing.T) {

@@ -2,10 +2,12 @@ package app
 
 import (
 	"fmt"
+	"runtime"
+
 	"github.com/gorilla/mux"
+
 	"github.com/rainset/shortener/internal/queue"
 	"github.com/rainset/shortener/internal/storage"
-	"runtime"
 )
 
 type App struct {
