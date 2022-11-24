@@ -255,7 +255,7 @@ func (a *App) SaveURLBatchJSONHandler(c *gin.Context) {
 
 	result, err := a.s.AddBatchURL(batchURLs)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": "db save error"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": "db save error", "err": err})
 		return
 	}
 

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/gob"
 	"flag"
+	"github.com/gin-contrib/pprof"
 	"github.com/rainset/shortener/internal/app"
 	"github.com/rainset/shortener/internal/storage"
 	"github.com/rainset/shortener/internal/storage/file"
@@ -56,10 +57,9 @@ func main() {
 		CookieHashKey:  "49a8aca82c132d8d1f430e32be1e6ff3",
 		CookieBlockKey: "49a8aca82c132d8d1f430e32be1e6ff2",
 	}
-
 	application := app.New(s, conf)
-
 	r := application.NewRouter()
+	pprof.Register(r)
 	err := r.Run(conf.ServerAddress)
 	if err != nil {
 		panic(err)

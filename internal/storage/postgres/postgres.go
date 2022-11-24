@@ -173,11 +173,7 @@ func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.Resul
 			if errors.As(err, &pgErr) {
 				if pgErr.Code == pgerrcode.UniqueViolation {
 					err = nil
-					//var errItem error
-					//hash, errItem = d.GetByOriginalURL(v.OriginalURL)
-					//if errItem != nil {
-					//	return result, errItem
-					//}
+
 				}
 			}
 		}
@@ -186,10 +182,10 @@ func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.Resul
 		}
 	}
 
-	//if err != nil {
-	//	_ = tx.Rollback(context.Background())
-	//	return result, err
-	//}
+	if err != nil {
+		_ = tx.Rollback(context.Background())
+		return result, err
+	}
 	err = tx.Commit(context.Background())
 	if err != nil {
 		return result, err
