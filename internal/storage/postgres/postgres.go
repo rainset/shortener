@@ -1,3 +1,4 @@
+// Пакет для работы с базой данных postgres
 package postgres
 
 import (

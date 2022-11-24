@@ -1,5 +1,4 @@
-// Пакет app является основным приложение, в котором реализована инициализация бд и http хендлеров
-
+// Пакет app является основным приложением, в котором реализована инициализация бд и http хендлеров
 package app
 
 import (
@@ -19,6 +18,7 @@ type App struct {
 	Queue  *queue.DeleteURLQueue
 }
 
+// структура для настроек приложения
 type Config struct {
 	ServerAddress  string
 	ServerBaseURL  string

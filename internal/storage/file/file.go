@@ -1,3 +1,4 @@
+// Пакет для работы с базой данных размещенной в файловой системе
 package file
 
 import (
@@ -159,7 +160,6 @@ func (f *File) GetByOriginalURL(original string) (hash string, err error) {
 }
 
 // заглушка реализовано только для postgres
-
 func (f *File) AddBatchURL(_ []storage.BatchUrls) (result []storage.ResultBatchUrls, err error) {
 	return result, err
 }
