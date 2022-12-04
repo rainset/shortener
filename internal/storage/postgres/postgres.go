@@ -1,16 +1,19 @@
+// Пакет для работы с базой данных postgres
 package postgres
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v4"
+
 	"github.com/rainset/shortener/internal/helper"
 	"github.com/rainset/shortener/internal/storage"
-	"io/ioutil"
-	"log"
 )
 
 type Database struct {
@@ -44,7 +47,8 @@ func New(dataSourceName string) *Database {
 }
 
 func CreateTables(db *pgx.Conn) error {
-	c, ioErr := ioutil.ReadFile("migrations/tables.sql")
+
+	c, ioErr := os.ReadFile("migrations/tables.sql")
 	if ioErr != nil {
 		log.Println("read file tables: ", ioErr)
 		return ioErr
@@ -87,11 +91,6 @@ func (d *Database) GetURL(hash string) (resultURL storage.ResultURL, err error) 
 		fmt.Println(resultURL, err)
 		return resultURL, err
 	}
-
-	//if resultURL.Original == "" {
-	//	err = errors.New("not_found")
-	//}
-
 	return resultURL, err
 }
 
@@ -140,13 +139,13 @@ func (d *Database) GetListUserHistoryURL(cookieID string) (result []storage.Resu
 
 	defer rows.Close()
 
+	var rowData storage.ResultHistoryURL
 	for rows.Next() {
-		rowArray := storage.ResultHistoryURL{}
-		err := rows.Scan(&rowArray.Hash, &rowArray.ID, &rowArray.CookieID, &rowArray.Original)
+		err := rows.Scan(&rowData.Hash, &rowData.ID, &rowData.CookieID, &rowData.Original)
 		if err != nil {
 			return result, err
 		}
-		result = append(result, storage.ResultHistoryURL{ID: rowArray.ID, Hash: rowArray.Hash, CookieID: rowArray.CookieID, Original: rowArray.Original})
+		result = append(result, storage.ResultHistoryURL{ID: rowData.ID, Hash: rowData.Hash, CookieID: rowData.CookieID, Original: rowData.Original})
 	}
 	return result, err
 }
@@ -173,11 +172,6 @@ func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.Resul
 			if errors.As(err, &pgErr) {
 				if pgErr.Code == pgerrcode.UniqueViolation {
 					err = nil
-					//var errItem error
-					//hash, errItem = d.GetByOriginalURL(v.OriginalURL)
-					//if errItem != nil {
-					//	return result, errItem
-					//}
 				}
 			}
 		}
@@ -186,10 +180,10 @@ func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.Resul
 		}
 	}
 
-	//if err != nil {
-	//	_ = tx.Rollback(context.Background())
-	//	return result, err
-	//}
+	if err != nil {
+		_ = tx.Rollback(context.Background())
+		return result, err
+	}
 	err = tx.Commit(context.Background())
 	if err != nil {
 		return result, err

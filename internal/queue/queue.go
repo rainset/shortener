@@ -1,10 +1,12 @@
+// Пакет для очередей удаления ссылок
 package queue
 
 import (
 	"fmt"
-	"github.com/rainset/shortener/internal/storage"
 	"sync"
 	"time"
+
+	"github.com/rainset/shortener/internal/storage"
 )
 
 type Task struct {

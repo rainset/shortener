@@ -1,12 +1,14 @@
+// Пакет для работы с базой данных размещенной в файловой системе
 package file
 
 import (
 	"encoding/json"
-	"github.com/rainset/shortener/internal/storage"
 	"io"
 	"log"
 	"os"
 	"sync"
+
+	"github.com/rainset/shortener/internal/storage"
 )
 
 type File struct {
@@ -158,7 +160,6 @@ func (f *File) GetByOriginalURL(original string) (hash string, err error) {
 }
 
 // заглушка реализовано только для postgres
-
 func (f *File) AddBatchURL(_ []storage.BatchUrls) (result []storage.ResultBatchUrls, err error) {
 	return result, err
 }

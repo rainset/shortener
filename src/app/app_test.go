@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,4 +16,14 @@ func TestApp_GenerateShortenURL(t *testing.T) {
 	shortenURL := app.GenerateShortenURL(hash)
 	result := app.Config.ServerBaseURL + "/" + hash
 	assert.Equal(t, shortenURL, result)
+}
+
+func ExampleApp_GenerateShortenURL() {
+	s := memory.New()
+	a := New(s, conf)
+	shortenURL := a.GenerateShortenURL("dk8Sv98F")
+	fmt.Println(shortenURL)
+
+	// Output:
+	// http://localhost:8080/dk8Sv98F
 }
