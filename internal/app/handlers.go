@@ -1,3 +1,5 @@
+// Package app - http handlers
+
 package app
 
 import (

@@ -81,8 +81,8 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 	}
 
 	type want struct {
-		code     int
 		response string
+		code     int
 	}
 
 	tests := []struct {
