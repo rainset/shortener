@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/gob"
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/gin-contrib/pprof"
@@ -15,6 +16,10 @@ import (
 )
 
 var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+
 	serverAddress   *string
 	baseURL         *string
 	fileStoragePath *string
@@ -29,10 +34,21 @@ func init() {
 	baseURL = flag.String("b", os.Getenv("BASE_URL"), "string base url, ex:[http://localhost]")
 	fileStoragePath = flag.String("f", os.Getenv("FILE_STORAGE_PATH"), "string file storage path, ex:[/file_storage.log]")
 	databaseDsn = flag.String("d", os.Getenv("DATABASE_DSN"), "string db connection, ex:[postgres://root:12345@localhost:5432/shorten]")
+
+	if buildVersion == "" {
+		buildVersion = "N/A"
+	}
+	if buildDate == "" {
+		buildDate = "N/A"
+	}
+	if buildCommit == "" {
+		buildCommit = "N/A"
+	}
 }
 
 func main() {
 
+	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n", buildVersion, buildDate, buildCommit)
 	flag.Parse()
 
 	if *serverAddress == "" {
