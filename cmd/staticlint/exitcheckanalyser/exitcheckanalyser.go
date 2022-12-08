@@ -4,6 +4,7 @@ package exitcheckanalyser
 
 import (
 	"go/ast"
+	"go/token"
 	"golang.org/x/tools/go/analysis"
 )
 
@@ -13,44 +14,63 @@ var ExitCheckAnalyzer = &analysis.Analyzer{
 	Run:  run,
 }
 
+type Position struct {
+	Name string
+	Pos  token.Pos
+	End  token.Pos
+}
+
 func run(pass *analysis.Pass) (interface{}, error) {
 	//fset := token.NewFileSet()
 	//pass.Reportf(1, "os.Exit declaration")
 	for _, file := range pass.Files {
+
+		posPackage := make(map[string]Position)
+		posFunc := make(map[string]Position)
+		//posCallExpr := make(map[string]Position)
+
 		// функцией ast.Inspect проходим по всем узлам AST
 		ast.Inspect(file, func(fileNode ast.Node) bool {
 
 			switch x := fileNode.(type) {
 			case *ast.File:
+				///ast.Print(fset, fileNode.Pos())
+				//log.Println("package:", x.Name.Name, x.Pos(), x.End())
 
-				//log.Println("package:", x.Name.Name)
-				for i := 0; i < len(x.Decls); i++ {
-					if funcDecl, ok := x.Decls[i].(*ast.FuncDecl); ok {
-						//log.Println("funcDecl:", funcDecl.Body)
-						for i := 0; i < len(funcDecl.Body.List); i++ {
-							if exprStmt, ok := funcDecl.Body.List[i].(*ast.ExprStmt); ok {
-								//log.Println("exprStmt:", exprStmt.X.(*ast.CallExpr).Fun)
-								if callExpr, ok := exprStmt.X.(*ast.CallExpr).Fun.(*ast.SelectorExpr); ok {
-									//log.Println("callExpr11:", x.Name.Name, callExpr.X.(*ast.Ident).Name, callExpr.Sel.Name)
+				posPackage[x.Name.Name] = Position{Name: x.Name.Name, Pos: x.Pos(), End: x.End()}
 
-									//log.Println("callExpr", exprStmt.X.(*ast.CallExpr))
-
-									if callExpr.X.(*ast.Ident).Name == "os" &&
-										callExpr.Sel.Name == "Exit" &&
-										x.Name.Name == "main" {
-										//log.Println(x.Pos(), callExpr.X.(*ast.Ident).Name, callExpr.Sel.Name, x.Name.Name)
-
-										//log.Println("os.Exit declaration")
-										pass.Reportf(callExpr.Pos(), "os.Exit declaration")
-									}
-
-								}
-							}
-						}
-					}
-				}
 			case *ast.CallExpr:
+				//log.Println("CallExpr", x.Fun.(*ast.SelectorExpr).X.(*ast.Ident).Name, x.Fun.(*ast.SelectorExpr).Sel.Name)
+				name := x.Fun.(*ast.SelectorExpr).X.(*ast.Ident).Name
+				selName := x.Fun.(*ast.SelectorExpr).Sel.Name
+				//posCallExpr[name] = Position{Name: name, Pos: x.Pos(), End: x.End()}
+
+				if name != "os" || selName != "Exit" {
+					return true
+				}
+
+				if _, ok := posPackage["main"]; !ok {
+					return true
+				}
+
+				if _, ok := posFunc["main"]; !ok {
+					return true
+				}
+
+				if posPackage["main"].Pos < posFunc["main"].Pos &&
+					posPackage["main"].End >= posFunc["main"].End &&
+					posFunc["main"].Pos < x.Pos() &&
+					posFunc["main"].End >= x.End() {
+
+					//log.Println("posPackage", posPackage)
+					//log.Println("FuncDecl", posFunc)
+					pass.Reportf(x.Pos(), "os.Exit declaration")
+				}
+
 			case *ast.FuncDecl:
+				//log.Println("FuncDecl", x.Name.Name, x.Pos(), x.End())
+				posFunc[x.Name.Name] = Position{Name: x.Name.Name, Pos: x.Pos(), End: x.End()}
+				//ast.Print(fset, x)
 			}
 
 			return true
