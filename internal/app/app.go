@@ -1,5 +1,4 @@
-// Пакет app является основным приложение, в котором реализована инициализация бд и http хендлеров
-
+// Package app является основным приложение, в котором реализована инициализация бд и http хендлеров
 package app
 
 import (
@@ -13,10 +12,10 @@ import (
 )
 
 type App struct {
-	Config Config
 	Router *mux.Router
-	s      storage.InterfaceStorage
 	Queue  *queue.DeleteURLQueue
+	s      storage.InterfaceStorage
+	Config Config
 }
 
 type Config struct {
