@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/gin-contrib/sessions"
@@ -143,14 +142,15 @@ func (a *App) SaveURLHandler(c *gin.Context) {
 		return
 	}
 
-	urlValue, err := url.ParseRequestURI(string(bodyBytes))
+	//urlValue, err := url.ParseRequestURI(string(bodyBytes))
+	urlValue := string(bodyBytes)
 	if err != nil {
 		return
 	}
 	hash := helper.GenerateToken(8)
 
 	var isDBExist bool
-	err = a.s.AddURL(hash, urlValue.String())
+	err = a.s.AddURL(hash, urlValue)
 	if err != nil {
 		fmt.Println("a.s.AddURL:", err)
 
@@ -158,7 +158,7 @@ func (a *App) SaveURLHandler(c *gin.Context) {
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
 				isDBExist = true
-				hash, err = a.s.GetByOriginalURL(urlValue.String())
+				hash, err = a.s.GetByOriginalURL(urlValue)
 				if err != nil {
 					return
 				}
@@ -167,7 +167,7 @@ func (a *App) SaveURLHandler(c *gin.Context) {
 	}
 
 	if err != nil && !isDBExist {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": fmt.Sprintf("incorrect url format, hash: %s body: %s", hash, urlValue.String())})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": fmt.Sprintf("incorrect url format, hash: %s body: %s", hash, urlValue)})
 		return
 	}
 
