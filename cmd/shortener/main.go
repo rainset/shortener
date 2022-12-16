@@ -31,12 +31,11 @@ func init() {
 func main() {
 
 	flag.Parse()
-
-	if *serverAddress == "" {
-		*serverAddress = "localhost:8080"
-	}
 	if *baseURL == "" {
 		*baseURL = "http://localhost:8080"
+	}
+	if *serverAddress == "" {
+		*serverAddress = "localhost:8080"
 	}
 
 	var s storage.InterfaceStorage
