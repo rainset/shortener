@@ -72,7 +72,7 @@ func main() {
 	}
 
 	w1 := bufio.NewWriter(f1)
-	_, err = w1.WriteString(certPEM.String())
+	w1.WriteString(certPEM.String())
 	w1.Flush()
 
 	f2, err := os.Create("cert/private.key")
@@ -80,6 +80,6 @@ func main() {
 		panic(err)
 	}
 	w2 := bufio.NewWriter(f2)
-	_, err = w2.WriteString(privateKeyPEM.String())
+	w2.WriteString(privateKeyPEM.String())
 	w2.Flush()
 }

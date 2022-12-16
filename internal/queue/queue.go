@@ -3,7 +3,6 @@ package queue
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
