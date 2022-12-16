@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gin-contrib/pprof"
-
 	"github.com/rainset/shortener/internal/app"
 	"github.com/rainset/shortener/internal/storage"
 	"github.com/rainset/shortener/internal/storage/file"
@@ -70,7 +68,8 @@ func main() {
 	}
 	application := app.New(s, conf)
 	r := application.NewRouter()
-	pprof.Register(r)
+
+	//pprof.Register(r)
 
 	if *enableHTTPS != "" {
 		err = r.RunTLS(conf.ServerAddress, "cert/cert.pem", "cert/private.key")
