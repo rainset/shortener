@@ -24,6 +24,7 @@ var (
 	baseURL         *string
 	fileStoragePath *string
 	databaseDsn     *string
+	enableHTTPS     *string
 )
 
 func init() {
@@ -34,9 +35,13 @@ func init() {
 	baseURL = flag.String("b", os.Getenv("BASE_URL"), "string base url, ex:[http://localhost]")
 	fileStoragePath = flag.String("f", os.Getenv("FILE_STORAGE_PATH"), "string file storage path, ex:[/file_storage.txt]")
 	databaseDsn = flag.String("d", os.Getenv("DATABASE_DSN"), "string db connection, ex:[postgres://root:12345@localhost:5432/shorten]")
+	enableHTTPS = flag.String("s", os.Getenv("ENABLE_HTTPS"), "enable https on app")
 }
 
 func main() {
+
+	var err error
+	var s storage.InterfaceStorage
 
 	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n", buildVersion, buildDate, buildCommit)
 	flag.Parse()
@@ -47,8 +52,6 @@ func main() {
 	if *baseURL == "" {
 		*baseURL = "http://localhost:8080"
 	}
-
-	var s storage.InterfaceStorage
 
 	switch {
 	case *databaseDsn != "":
@@ -68,7 +71,13 @@ func main() {
 	application := app.New(s, conf)
 	r := application.NewRouter()
 	pprof.Register(r)
-	err := r.Run(conf.ServerAddress)
+
+	if *enableHTTPS != "" {
+		err = r.RunTLS(conf.ServerAddress, "cert/cert.pem", "cert/private.key")
+	} else {
+		err = r.Run(conf.ServerAddress)
+	}
+
 	if err != nil {
 		panic(err)
 	}

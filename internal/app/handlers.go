@@ -39,11 +39,19 @@ func (a *App) NewRouter() *gin.Engine {
 	r.DELETE("/api/user/urls", a.DeleteUserBatchURLHandler)
 	r.GET("/api/user/urls", a.UserURLListHandler)
 	r.POST("/", a.SaveURLHandler)
+	r.GET("/", a.MainPageHandler)
 
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"code": http.StatusNotFound})
 	})
 	return r
+}
+
+// MainPageHandler хендлер GET /
+// главная страница проекта
+func (a *App) MainPageHandler(c *gin.Context) {
+
+	c.JSON(http.StatusOK, gin.H{"code": http.StatusOK})
 }
 
 // PingHandler хендлер GET /ping
@@ -144,9 +152,7 @@ func (a *App) SaveURLHandler(c *gin.Context) {
 
 	//urlValue, err := url.ParseRequestURI(string(bodyBytes))
 	urlValue := string(bodyBytes)
-	if err != nil {
-		return
-	}
+
 	hash := helper.GenerateToken(8)
 
 	var isDBExist bool
