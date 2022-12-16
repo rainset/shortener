@@ -3,6 +3,7 @@ package queue
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -40,7 +41,7 @@ func (q *DeleteURLQueue) PopWait() *Task {
 func (q *DeleteURLQueue) PeriodicURLDelete() {
 	var err error
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 
 		if len(q.urls) == 0 {
 			continue

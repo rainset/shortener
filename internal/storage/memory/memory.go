@@ -59,6 +59,7 @@ func (m *Memory) AddBatchURL(_ []storage.BatchUrls) (result []storage.ResultBatc
 }
 
 func (m *Memory) DeleteUserBatchURL(cookieID string, hashes []string) (err error) {
+
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	for _, hash := range hashes {
@@ -77,6 +78,7 @@ func (m *Memory) DeleteBatchURL(hashes []string) (err error) {
 	for _, hash := range hashes {
 		m.urls[hash] = storage.ResultURL{ID: 0, Hash: hash, Original: m.urls[hash].Original, Deleted: 1}
 	}
+
 	return err
 }
 
