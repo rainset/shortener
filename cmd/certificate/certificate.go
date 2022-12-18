@@ -66,7 +66,7 @@ func main() {
 		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
 	})
 
-	f1, err := os.Create("cert/cert.pem")
+	f1, err := os.Create("../../cert/cert.pem")
 	if err != nil {
 		panic(err)
 	}
@@ -75,7 +75,7 @@ func main() {
 	w1.WriteString(certPEM.String())
 	w1.Flush()
 
-	f2, err := os.Create("cert/private.key")
+	f2, err := os.Create("../../cert/private.key")
 	if err != nil {
 		panic(err)
 	}

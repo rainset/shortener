@@ -2,8 +2,11 @@ package main
 
 import (
 	"encoding/gob"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/gin-contrib/pprof"
+	"log"
 	"os"
 
 	"github.com/rainset/shortener/internal/app"
@@ -12,6 +15,8 @@ import (
 	"github.com/rainset/shortener/internal/storage/memory"
 	"github.com/rainset/shortener/internal/storage/postgres"
 )
+
+//go:generate go run ../certificate/certificate.go
 
 var (
 	buildVersion = "N/A"
@@ -23,12 +28,22 @@ var (
 	fileStoragePath *string
 	databaseDsn     *string
 	enableHTTPS     *string
+	configFile      *string
 )
+
+type ConfigFileData struct {
+	ServerAddress   string `json:"server_address"`
+	BaseURL         string `json:"base_url"`
+	FileStoragePath string `json:"file_storage_path"`
+	Database        string `json:"database"`
+	EnableHTTPS     bool   `json:"enable_https"`
+}
 
 func init() {
 	// регистрация структуры для сессии
 	gob.Register(app.Session{})
 
+	configFile = flag.String("c", os.Getenv("CONFIG"), "path to config.json file")
 	serverAddress = flag.String("a", os.Getenv("SERVER_ADDRESS"), "string server name, ex:[localhost:8080]")
 	baseURL = flag.String("b", os.Getenv("BASE_URL"), "string base url, ex:[http://localhost]")
 	fileStoragePath = flag.String("f", os.Getenv("FILE_STORAGE_PATH"), "string file storage path, ex:[/file_storage.txt]")
@@ -39,42 +54,69 @@ func init() {
 func main() {
 
 	var err error
+
 	var s storage.InterfaceStorage
 
 	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n", buildVersion, buildDate, buildCommit)
 	flag.Parse()
 
-	if *serverAddress == "" {
-		*serverAddress = "localhost:8080"
+	var cnfFileData ConfigFileData
+
+	if *configFile != "" {
+		var errCnf error
+		cnfFile, errCnf := os.ReadFile(*configFile)
+		if errCnf != nil {
+			log.Println("Error when opening file: ", errCnf)
+		}
+		errCnf = json.Unmarshal(cnfFile, &cnfFileData)
+		if errCnf != nil {
+			log.Println("Error during Unmarshal(): ", errCnf)
+		}
 	}
-	if *baseURL == "" {
-		*baseURL = "http://localhost:8080"
+
+	if *serverAddress != "" {
+		cnfFileData.ServerAddress = *serverAddress
+	}
+	if *baseURL != "" {
+		cnfFileData.BaseURL = *serverAddress
+	}
+	if *baseURL != "" {
+		cnfFileData.BaseURL = *serverAddress
+	}
+	if *fileStoragePath != "" {
+		cnfFileData.FileStoragePath = *fileStoragePath
+	}
+	if *databaseDsn != "" {
+		cnfFileData.Database = *databaseDsn
+	}
+	if *enableHTTPS != "" {
+		cnfFileData.EnableHTTPS = true
 	}
 
 	switch {
-	case *databaseDsn != "":
-		s = postgres.New(*databaseDsn)
-	case *fileStoragePath != "":
-		s = file.New(*fileStoragePath)
+	case cnfFileData.Database != "":
+		s = postgres.New(cnfFileData.Database)
+	case cnfFileData.FileStoragePath != "":
+		s = file.New(cnfFileData.FileStoragePath)
 	default:
 		s = memory.New()
 	}
 
 	conf := app.Config{
-		ServerAddress:  *serverAddress,
-		ServerBaseURL:  *baseURL,
+		ServerAddress:  cnfFileData.ServerAddress,
+		ServerBaseURL:  cnfFileData.BaseURL,
 		CookieHashKey:  "49a8aca82c132d8d1f430e32be1e6ff3",
 		CookieBlockKey: "49a8aca82c132d8d1f430e32be1e6ff2",
 	}
 	application := app.New(s, conf)
 	r := application.NewRouter()
 
-	//pprof.Register(r)
+	pprof.Register(r)
 
-	if *enableHTTPS != "" {
-		err = r.RunTLS(conf.ServerAddress, "cert/cert.pem", "cert/private.key")
+	if cnfFileData.EnableHTTPS == true {
+		err = r.RunTLS(cnfFileData.ServerAddress, "cert/cert.pem", "cert/private.key")
 	} else {
-		err = r.Run(conf.ServerAddress)
+		err = r.Run(cnfFileData.ServerAddress)
 	}
 
 	if err != nil {
