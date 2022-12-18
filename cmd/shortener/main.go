@@ -125,7 +125,7 @@ func main() {
 	// it won't block the graceful shutdown handling below
 	go func() {
 
-		if cnfFileData.EnableHTTPS == true {
+		if cnfFileData.EnableHTTPS {
 			err = r.RunTLS(cnfFileData.ServerAddress, "cert/cert.pem", "cert/private.key")
 		} else {
 			err = r.Run(cnfFileData.ServerAddress)
