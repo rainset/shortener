@@ -1,13 +1,18 @@
 package main
 
 import (
+	"context"
 	"encoding/gob"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/gin-contrib/pprof"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/rainset/shortener/internal/app"
 	"github.com/rainset/shortener/internal/storage"
@@ -43,6 +48,8 @@ func init() {
 	// регистрация структуры для сессии
 	gob.Register(app.Session{})
 
+	//gin.SetMode(gin.ReleaseMode)
+
 	configFile = flag.String("c", os.Getenv("CONFIG"), "path to config.json file")
 	serverAddress = flag.String("a", os.Getenv("SERVER_ADDRESS"), "string server name, ex:[localhost:8080]")
 	baseURL = flag.String("b", os.Getenv("BASE_URL"), "string base url, ex:[http://localhost]")
@@ -54,7 +61,6 @@ func init() {
 func main() {
 
 	var err error
-
 	var s storage.InterfaceStorage
 
 	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n", buildVersion, buildDate, buildCommit)
@@ -78,10 +84,7 @@ func main() {
 		cnfFileData.ServerAddress = *serverAddress
 	}
 	if *baseURL != "" {
-		cnfFileData.BaseURL = *serverAddress
-	}
-	if *baseURL != "" {
-		cnfFileData.BaseURL = *serverAddress
+		cnfFileData.BaseURL = *baseURL
 	}
 	if *fileStoragePath != "" {
 		cnfFileData.FileStoragePath = *fileStoragePath
@@ -113,14 +116,44 @@ func main() {
 
 	pprof.Register(r)
 
-	if cnfFileData.EnableHTTPS == true {
-		err = r.RunTLS(cnfFileData.ServerAddress, "cert/cert.pem", "cert/private.key")
-	} else {
-		err = r.Run(cnfFileData.ServerAddress)
+	srv := &http.Server{
+		Addr:    cnfFileData.ServerAddress,
+		Handler: r,
 	}
 
-	if err != nil {
-		panic(err)
+	// Initializing the server in a goroutine so that
+	// it won't block the graceful shutdown handling below
+	go func() {
+
+		if cnfFileData.EnableHTTPS == true {
+			err = r.RunTLS(cnfFileData.ServerAddress, "cert/cert.pem", "cert/private.key")
+		} else {
+			err = r.Run(cnfFileData.ServerAddress)
+		}
+		if err != nil {
+			log.Println(cnfFileData)
+			panic(err)
+		}
+		log.Println("Listening on ", cnfFileData.ServerAddress)
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server with
+	// a timeout of 5 seconds.
+	quit := make(chan os.Signal, 1)
+	// kill (no param) default send syscall.SIGTERM
+	// kill -2 is syscall.SIGINT
+	// kill -9 is syscall.SIGKILL but can't be catch, so don't need add it
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	// The context is used to inform the server it has 5 seconds to finish
+	// the request it is currently handling
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal("Server forced to shutdown: ", err)
 	}
 
+	log.Println("Server exiting")
 }

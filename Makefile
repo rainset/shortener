@@ -12,6 +12,10 @@ MAKEFLAGS += --silent
 build:
 	go build -o $(GOBIN)/main cmd/shortener/main.go
 
+## run-config: run application with config.json
+run-config:
+	go run cmd/shortener/main.go -c config.json
+
 ## run-with-memory: run application with memory storage
 run-with-memory:
 	go run cmd/shortener/main.go
