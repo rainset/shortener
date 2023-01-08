@@ -1,0 +1,7 @@
+{
+  "server_address": "localhost:8080",
+  "base_url": "http://localhost",
+  "file_storage_path": "storage.txt",
+  "database_dsn": "postgres://root:12345@localhost:5432/shorten",
+  "enable_https": false
+}

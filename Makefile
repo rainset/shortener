@@ -5,14 +5,16 @@ GOBASE=$(shell pwd)
 GOBIN=$(GOBASE)/bin
 #GOPATH="$(GOBASE)/vendor:$(GOBASE)"
 
-
-
 # Make is verbose in Linux. Make it silent.
 MAKEFLAGS += --silent
 
 ## build: build default application
 build:
 	go build -o $(GOBIN)/main cmd/shortener/main.go
+
+## run-config: run application with config.json
+run-config:
+	go run cmd/shortener/main.go -c config.json
 
 ## run-with-memory: run application with memory storage
 run-with-memory:
@@ -47,6 +49,11 @@ compile:
 	echo "Compiling for every OS and Platform"
 	GOOS=linux GOARCH=arm go build -o $(GOBIN)/main-linux-arm cmd/shortener/main.go
 	GOOS=linux GOARCH=arm64 go build -o $(GOBIN)/main-linux-arm64 cmd/shortener/main.go
+
+## certificate: Generate ssl certificate
+certificate:
+	go run cmd/shortener/certificate.go
+
 
 help: Makefile
 	@echo
