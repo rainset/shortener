@@ -72,11 +72,11 @@ func main() {
 		var errCnf error
 		cnfFile, errCnf := os.ReadFile(*configFile)
 		if errCnf != nil {
-			log.Println("Error when opening file: ", errCnf)
+			log.Fatal("Error when opening file: ", errCnf)
 		}
 		errCnf = json.Unmarshal(cnfFile, &cnfFileData)
 		if errCnf != nil {
-			log.Println("Error during Unmarshal(): ", errCnf)
+			log.Fatal("Error during Unmarshal(): ", errCnf)
 		}
 	}
 
@@ -94,6 +94,8 @@ func main() {
 	}
 	if *enableHTTPS != "" {
 		cnfFileData.EnableHTTPS = true
+	} else {
+		cnfFileData.EnableHTTPS = false
 	}
 
 	switch {
@@ -131,19 +133,18 @@ func main() {
 			err = r.Run(cnfFileData.ServerAddress)
 		}
 		if err != nil {
-			log.Println(cnfFileData)
-			panic(err)
+			log.Fatal(err)
 		}
 		log.Println("Listening on ", cnfFileData.ServerAddress)
 	}()
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
-	quit := make(chan os.Signal, 1)
+	quit := make(chan os.Signal, 3)
 	// kill (no param) default send syscall.SIGTERM
 	// kill -2 is syscall.SIGINT
 	// kill -9 is syscall.SIGKILL but can't be catch, so don't need add it
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	<-quit
 	log.Println("Shutting down server...")
 
