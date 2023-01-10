@@ -33,6 +33,7 @@ var (
 	fileStoragePath *string
 	databaseDsn     *string
 	enableHTTPS     *string
+	trustedSubnet   *string
 	configFile      *string
 )
 
@@ -40,8 +41,9 @@ type ConfigFileData struct {
 	ServerAddress   string `json:"server_address"`
 	BaseURL         string `json:"base_url"`
 	FileStoragePath string `json:"file_storage_path"`
-	Database        string `json:"database"`
+	Database        string `json:"database_dsn"`
 	EnableHTTPS     bool   `json:"enable_https"`
+	TrustedSubnet   string `json:"trusted_subnet"`
 }
 
 func init() {
@@ -56,6 +58,7 @@ func init() {
 	fileStoragePath = flag.String("f", os.Getenv("FILE_STORAGE_PATH"), "string file storage path, ex:[/file_storage.txt]")
 	databaseDsn = flag.String("d", os.Getenv("DATABASE_DSN"), "string db connection, ex:[postgres://root:12345@localhost:5432/shorten]")
 	enableHTTPS = flag.String("s", os.Getenv("ENABLE_HTTPS"), "enable https on app")
+	trustedSubnet = flag.String("t", os.Getenv("TRUSTED_SUBNET"), "access ip subnet mask")
 }
 
 func main() {
@@ -80,6 +83,8 @@ func main() {
 		}
 	}
 
+	log.Println(cnfFileData)
+
 	if *serverAddress != "" {
 		cnfFileData.ServerAddress = *serverAddress
 	}
@@ -92,6 +97,11 @@ func main() {
 	if *databaseDsn != "" {
 		cnfFileData.Database = *databaseDsn
 	}
+
+	if *trustedSubnet != "" {
+		cnfFileData.TrustedSubnet = *trustedSubnet
+	}
+
 	if *enableHTTPS != "" {
 		cnfFileData.EnableHTTPS = true
 	} else {
@@ -112,6 +122,7 @@ func main() {
 		ServerBaseURL:  cnfFileData.BaseURL,
 		CookieHashKey:  "49a8aca82c132d8d1f430e32be1e6ff3",
 		CookieBlockKey: "49a8aca82c132d8d1f430e32be1e6ff2",
+		TrustedSubnet:  cnfFileData.TrustedSubnet,
 	}
 	application := app.New(s, conf)
 	r := application.NewRouter()

@@ -102,3 +102,7 @@ func (m *Memory) GetListUserHistoryURL(cookieID string) (result []storage.Result
 func (m *Memory) Ping() (err error) {
 	return err
 }
+
+func (m *Memory) GetStats() (stats storage.Stats, err error) {
+	return stats, err
+}

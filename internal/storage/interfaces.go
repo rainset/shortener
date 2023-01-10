@@ -29,6 +29,11 @@ type ResultHistoryURL struct {
 	Original string
 }
 
+type Stats struct {
+	Urls  int
+	Users int
+}
+
 // InterfaceStorage интерфейс для взаимодействия с базой данных
 type InterfaceStorage interface {
 	//AddURL Добавление ссылки
@@ -49,4 +54,6 @@ type InterfaceStorage interface {
 	Ping() error
 	//GetListUserHistoryURL Получение списка ссылок пользователя
 	GetListUserHistoryURL(cookieID string) ([]ResultHistoryURL, error)
+	//GetStats Получение статистики сервиса
+	GetStats() (Stats, error)
 }

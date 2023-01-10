@@ -204,3 +204,7 @@ func (f *File) GetListUserHistoryURL(cookieID string) (result []storage.ResultHi
 func (f *File) Ping() (err error) {
 	return err
 }
+
+func (f *File) GetStats() (stats storage.Stats, err error) {
+	return stats, err
+}

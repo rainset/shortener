@@ -23,6 +23,7 @@ type Config struct {
 	ServerBaseURL  string
 	CookieHashKey  string
 	CookieBlockKey string
+	TrustedSubnet  string
 }
 
 // Session структура для хранения сессии пользователя

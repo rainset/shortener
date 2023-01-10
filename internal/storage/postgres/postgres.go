@@ -254,3 +254,17 @@ func (d *Database) DeleteBatchURL(hashes []string) (err error) {
 
 	return nil
 }
+
+func (d *Database) GetStats() (stats storage.Stats, err error) {
+	q1 := "SELECT COUNT(*) FROM urls WHERE deleted=0;"
+	err = d.pgx.QueryRow(context.Background(), q1).Scan(&stats.Urls)
+	if err != nil {
+		return stats, err
+	}
+	q2 := "SELECT COUNT(DISTINCT(cookie_id)) FROM user_history_urls;"
+	err = d.pgx.QueryRow(context.Background(), q2).Scan(&stats.Users)
+	if err != nil {
+		return stats, err
+	}
+	return stats, err
+}

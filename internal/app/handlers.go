@@ -8,7 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"net/netip"
 	"strings"
 
 	"github.com/gin-contrib/sessions"
@@ -38,6 +40,7 @@ func (a *App) NewRouter() *gin.Engine {
 	r.POST("/api/shorten", a.SaveURLJSONHandler)
 	r.DELETE("/api/user/urls", a.DeleteUserBatchURLHandler)
 	r.GET("/api/user/urls", a.UserURLListHandler)
+	r.GET("/api/internal/stats", a.SubnetMiddleware, a.StatsHandler)
 	r.POST("/", a.SaveURLHandler)
 	r.GET("/", a.MainPageHandler)
 
@@ -47,11 +50,53 @@ func (a *App) NewRouter() *gin.Engine {
 	return r
 }
 
+// SubnetMiddleware
+// Middleware проверяет принадлежность IP адреса клиента на совпадение разрешенной маски безклассовой адресации (Classless Inter-Domain Routing, CIDR)
+func (a *App) SubnetMiddleware(c *gin.Context) {
+
+	network, err := netip.ParsePrefix(a.Config.TrustedSubnet)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden})
+	}
+
+	ip, err := netip.ParseAddr(c.ClientIP())
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden})
+	}
+
+	b := network.Contains(ip)
+	log.Println("network.Contains:", c.ClientIP(), b) // true
+
+	if b != true {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden})
+	}
+
+	c.Next()
+}
+
 // MainPageHandler хендлер GET /
 // главная страница проекта
 func (a *App) MainPageHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": http.StatusOK})
+}
+
+// StatsHandler хендлер GET /api/internal/stats
+// статистика сервиса, доступ по маске IP
+func (a *App) StatsHandler(c *gin.Context) {
+
+	type Stats struct {
+		Urls  int `json:"urls"`
+		Users int `json:"users"`
+	}
+
+	stats, err := a.s.GetStats()
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"code": http.StatusInternalServerError, "err": "ping error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, Stats{Users: stats.Users, Urls: stats.Urls})
 }
 
 // PingHandler хендлер GET /ping
@@ -63,6 +108,7 @@ func (a *App) PingHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"code": http.StatusInternalServerError, "err": "ping error"})
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{"code": http.StatusOK})
 }
 
