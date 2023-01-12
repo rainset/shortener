@@ -37,3 +37,8 @@ func GenerateUniqueuserID() string {
 	rnd, _ := GenerateRandom(32)
 	return fmt.Sprintf("user.%d.%x", sec, rnd)
 }
+
+// GenerateShortenURL генерирует web ссылку
+func GenerateShortenURL(baseURL, shortenCode string) string {
+	return fmt.Sprintf("%s/%s", baseURL, shortenCode)
+}

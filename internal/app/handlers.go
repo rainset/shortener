@@ -223,7 +223,7 @@ func (a *App) SaveURLHandler(c *gin.Context) {
 		return
 	}
 
-	shortenURL := a.GenerateShortenURL(hash)
+	shortenURL := helper.GenerateShortenURL(a.Config.ServerBaseURL, hash)
 
 	err = a.s.AddUserHistoryURL(cookieuserID, hash)
 
@@ -279,8 +279,7 @@ func (a *App) SaveURLJSONHandler(c *gin.Context) {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-
-	shortenURL := a.GenerateShortenURL(hash)
+	shortenURL := helper.GenerateShortenURL(a.Config.ServerBaseURL, hash)
 	shortenData := responseBody{Result: shortenURL}
 
 	if isDBExist {
@@ -327,7 +326,8 @@ func (a *App) SaveURLBatchJSONHandler(c *gin.Context) {
 
 	var response []ShortenBatchResponse
 	for _, v := range result {
-		response = append(response, ShortenBatchResponse{ShortURL: a.GenerateShortenURL(v.Hash), CorrelationID: v.CorrelationID})
+		shortenURL := helper.GenerateShortenURL(a.Config.ServerBaseURL, v.Hash)
+		response = append(response, ShortenBatchResponse{ShortURL: shortenURL, CorrelationID: v.CorrelationID})
 	}
 
 	c.JSON(http.StatusCreated, response)

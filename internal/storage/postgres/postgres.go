@@ -151,7 +151,6 @@ func (d *Database) GetListUserHistoryURL(cookieID string) (result []storage.Resu
 }
 
 func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.ResultBatchUrls, err error) {
-
 	tx, err := d.pgx.Begin(context.Background())
 	if err != nil {
 		return result, err
@@ -168,6 +167,7 @@ func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.Resul
 		hash = helper.GenerateToken(8)
 		_, err = tx.Exec(context.Background(), "batch_insert", hash, v.OriginalURL, 0)
 		if err != nil {
+			log.Println(hash, v.OriginalURL, err)
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) {
 				if pgErr.Code == pgerrcode.UniqueViolation {
