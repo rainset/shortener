@@ -108,7 +108,7 @@ func (a *App) AddBatchURL(list []AddURLBatchRequest) (result []AddURLBatchRespon
 	return result, err
 }
 
-func (a *App) AddUserHistoryURL(userId, hash string) (err error) {
-	err = a.s.AddUserHistoryURL(userId, hash)
+func (a *App) AddUserHistoryURL(userID, hash string) (err error) {
+	err = a.s.AddUserHistoryURL(userID, hash)
 	return err
 }

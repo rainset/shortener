@@ -122,7 +122,7 @@ func main() {
 	}
 	application := app.New(s, conf)
 
-	if cnfFileData.GRPCMode == true {
+	if cnfFileData.GRPCMode {
 		application.StartGRPCServer()
 	} else {
 		application.StartHTTPServer()
