@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gin-contrib/pprof"
+	pb "github.com/rainset/shortener/internal/proto"
 	"google.golang.org/grpc"
 	"log"
 	"net"
@@ -17,9 +18,6 @@ import (
 
 	"github.com/rainset/shortener/internal/queue"
 	"github.com/rainset/shortener/internal/storage"
-
-	// импортируем пакет со сгенерированными protobuf-файлами
-	pb "github.com/rainset/shortener/proto"
 )
 
 type App struct {

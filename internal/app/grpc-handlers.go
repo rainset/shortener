@@ -3,7 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
-	pb "github.com/rainset/shortener/proto"
+	"github.com/rainset/shortener/internal/proto"
 )
 
 // ShortenerServer поддерживает все необходимые методы сервера.
@@ -11,13 +11,13 @@ type ShortenerGRPCServer struct {
 	a *App
 	// нужно встраивать тип pb.Unimplemented<TypeName>
 	// для совместимости с будущими версиями
-	pb.UnimplementedShortenerServer
+	proto.UnimplementedShortenerServer
 }
 
 // AddURL реализует интерфейс добавления ссылки.
-func (s *ShortenerGRPCServer) AddURL(ctx context.Context, in *pb.AddURLRequest) (*pb.AddURLResponse, error) {
+func (s *ShortenerGRPCServer) AddURL(ctx context.Context, in *proto.AddURLRequest) (*proto.AddURLResponse, error) {
 
-	var response pb.AddURLResponse
+	var response proto.AddURLResponse
 	addURLResult, err := s.a.AddURL(in.Url)
 	if err != nil {
 		response.Error = fmt.Sprintf("Ошибка при добавлении: %s", err)
@@ -29,8 +29,8 @@ func (s *ShortenerGRPCServer) AddURL(ctx context.Context, in *pb.AddURLRequest) 
 }
 
 // GetURL реализует интерфейс получения ссылки по хешу.
-func (s *ShortenerGRPCServer) GetURL(ctx context.Context, in *pb.GetURLRequest) (*pb.GetURLResponse, error) {
-	var response pb.GetURLResponse
+func (s *ShortenerGRPCServer) GetURL(ctx context.Context, in *proto.GetURLRequest) (*proto.GetURLResponse, error) {
+	var response proto.GetURLResponse
 
 	resultURL, err := s.a.GetURL(in.Hash)
 
@@ -49,8 +49,8 @@ func (s *ShortenerGRPCServer) GetURL(ctx context.Context, in *pb.GetURLRequest) 
 }
 
 // Stats реализует интерфейс получения статистики
-func (s *ShortenerGRPCServer) Stats(ctx context.Context, in *pb.StatsRequest) (*pb.StatsResponse, error) {
-	var response pb.StatsResponse
+func (s *ShortenerGRPCServer) Stats(ctx context.Context, in *proto.StatsRequest) (*proto.StatsResponse, error) {
+	var response proto.StatsResponse
 
 	stats, err := s.a.GetStats()
 	if err != nil {
@@ -63,8 +63,8 @@ func (s *ShortenerGRPCServer) Stats(ctx context.Context, in *pb.StatsRequest) (*
 }
 
 // AddBatchURL реализует интерфейс массового добавления ссылок
-func (s *ShortenerGRPCServer) AddBatchURL(ctx context.Context, in *pb.AddBatchURLRequest) (*pb.AddBatchURLResponse, error) {
-	var response pb.AddBatchURLResponse
+func (s *ShortenerGRPCServer) AddBatchURL(ctx context.Context, in *proto.AddBatchURLRequest) (*proto.AddBatchURLResponse, error) {
+	var response proto.AddBatchURLResponse
 
 	batchURLs := make([]AddURLBatchRequest, 0)
 	for _, v := range in.Urls {
@@ -77,9 +77,9 @@ func (s *ShortenerGRPCServer) AddBatchURL(ctx context.Context, in *pb.AddBatchUR
 		return &response, nil
 	}
 
-	urls := make([]*pb.BatchUrlResponse, 0)
+	urls := make([]*proto.BatchUrlResponse, 0)
 	for _, v := range result {
-		urls = append(urls, &pb.BatchUrlResponse{Correlation_ID: v.CorrelationID, ShortUrl: v.ShortURL})
+		urls = append(urls, &proto.BatchUrlResponse{Correlation_ID: v.CorrelationID, ShortUrl: v.ShortURL})
 	}
 	response.Urls = urls
 
