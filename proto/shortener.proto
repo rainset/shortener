@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package shortener;
 
-option go_package = "grpc-shortener/proto";
+option go_package = "shortener/proto";
 
 message AddURLRequest {
   string url = 1;
