@@ -63,7 +63,7 @@ func (s *ShortenerHTTPServer) SubnetMiddleware(c *gin.Context) {
 	b := network.Contains(ip)
 	log.Println("network.Contains:", c.ClientIP(), b) // true
 
-	if b == false {
+	if !b {
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": http.StatusForbidden})
 	}
 
