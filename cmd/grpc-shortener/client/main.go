@@ -72,16 +72,16 @@ func TestRequests(c pb.ShortenerClient) {
 	resp4, err := c.AddBatchURL(context.Background(), &pb.AddBatchURLRequest{
 		Urls: []*pb.BatchUrlRequest{
 			{
-				CorrelationId: "1",
-				OriginalUrl:   "http://example.com/1/",
+				Correlation_ID: "1",
+				OriginalUrl:    "http://example.com/1/",
 			},
 			{
-				CorrelationId: "2",
-				OriginalUrl:   "http://example.com/2/",
+				Correlation_ID: "2",
+				OriginalUrl:    "http://example.com/2/",
 			},
 			{
-				CorrelationId: "3",
-				OriginalUrl:   "http://example.com/3/",
+				Correlation_ID: "3",
+				OriginalUrl:    "http://example.com/3/",
 			},
 		},
 	})

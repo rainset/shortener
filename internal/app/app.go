@@ -15,8 +15,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gorilla/mux"
-
 	"github.com/rainset/shortener/internal/queue"
 	"github.com/rainset/shortener/internal/storage"
 
@@ -25,7 +23,6 @@ import (
 )
 
 type App struct {
-	Router *mux.Router
 	Queue  *queue.DeleteURLQueue
 	s      storage.InterfaceStorage
 	Config Config
@@ -70,7 +67,12 @@ func New(storage storage.InterfaceStorage, c Config) *App {
 }
 
 func (a *App) StartHTTPServer() {
-	r := a.NewRouter()
+
+	shs := &ShortenerHTTPServer{
+		a: a,
+	}
+
+	r := shs.NewRouter()
 
 	pprof.Register(r)
 
@@ -124,7 +126,7 @@ func (a *App) StartGRPCServer() {
 	// создаём gRPC-сервер без зарегистрированной службы
 	s := grpc.NewServer()
 	// регистрируем сервис
-	pb.RegisterShortenerServer(s, &ShortenerServer{store: a.s, config: a.Config})
+	pb.RegisterShortenerServer(s, &ShortenerGRPCServer{a: a})
 
 	fmt.Println("Сервер gRPC начал работу")
 	// получаем запрос gRPC
