@@ -5,5 +5,5 @@
   "database_dsn": "postgres://root:12345@localhost:5432/shorten",
   "enable_https": false,
   "trusted_subnet": "192.168.0.0/24",
-  "grpc_mode": false
+  "grpc_mode": true
 }
