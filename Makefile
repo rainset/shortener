@@ -8,6 +8,12 @@ GOBIN=$(GOBASE)/bin
 # Make is verbose in Linux. Make it silent.
 MAKEFLAGS += --silent
 
+test:
+	go test -count=1 ./...
+
+test-integration:
+	go test -tags integration -count=1 ./...
+
 ## build: build default application
 build:
 	go build -o $(GOBIN)/main cmd/shortener/main.go

@@ -35,6 +35,7 @@ type Config struct {
 	CookieBlockKey string
 	TrustedSubnet  string
 	EnableHTTPS    bool
+	GRPCMode       bool
 }
 
 // Session структура для хранения сессии пользователя
