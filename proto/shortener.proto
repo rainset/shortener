@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package shortener;
 
-option go_package = "shortener/proto";
+option go_package = "github.com/rainset/shortener/proto";
 
 message AddURLRequest {
   string url = 1;
