@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime"
 	"syscall"
 	"time"
 
@@ -48,10 +47,7 @@ func New(storage storage.InterfaceStorage, c Config) *App {
 	go newQueue.PeriodicURLDelete()
 
 	workers := make([]*queue.DeleteURLWorker, 0, 1)
-	for i := 0; i < runtime.NumCPU(); i++ {
-		workers = append(workers, queue.NewDeleteURLWorker(i, newQueue, storage))
-
-	}
+	workers = append(workers, queue.NewDeleteURLWorker(1, newQueue, storage))
 
 	for _, w := range workers {
 		go w.Loop()
