@@ -47,7 +47,7 @@ func New(storage storage.InterfaceStorage, c Config) *App {
 	newQueue := queue.NewDeleteURLQueue(storage)
 	go newQueue.PeriodicURLDelete()
 
-	workers := make([]*queue.DeleteURLWorker, 0, runtime.NumCPU())
+	workers := make([]*queue.DeleteURLWorker, 0, 1)
 	for i := 0; i < runtime.NumCPU(); i++ {
 		workers = append(workers, queue.NewDeleteURLWorker(i, newQueue, storage))
 
