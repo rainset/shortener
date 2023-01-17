@@ -40,7 +40,7 @@ func (q *DeleteURLQueue) PopWait() *Task {
 func (q *DeleteURLQueue) PeriodicURLDelete() {
 	var err error
 	for {
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 
 		if len(q.urls) == 0 {
 			continue
@@ -80,7 +80,7 @@ func (w *DeleteURLWorker) Loop() {
 		t := w.queue.PopWait()
 		w.queue.mu.Lock()
 		w.queue.urls = append(w.queue.urls, t.Hashes...)
-		if len(w.queue.urls) > 50 {
+		if len(w.queue.urls) > 10 {
 			err = w.s.DeleteUserBatchURL(t.CookieID, w.queue.urls)
 			if err != nil {
 				fmt.Printf("DeleteURLWorker Loop() error: %v\n", err)
