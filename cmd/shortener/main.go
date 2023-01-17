@@ -66,6 +66,9 @@ func main() {
 
 	var cnfFileData ConfigFileData
 
+	cnfFileData.ServerAddress = "localhost:8080"
+	cnfFileData.ServerBaseURL = "http://localhost:8080"
+
 	if *configFile != "" {
 		var errCnf error
 		cnfFile, errCnf := os.ReadFile(*configFile)
