@@ -116,14 +116,14 @@ func (s *ShortenerHTTPServer) UserURLListHandler(c *gin.Context) {
 	ss := sessions.Default(c)
 	session, ok := ss.Get("sessid").(Session)
 	if !ok {
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithStatus(http.StatusNoContent)
 		return
 	}
 
 	userID := session.UserID
 	list, err := s.a.GetListUserHistoryURL(userID)
 	if err != nil {
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithStatus(http.StatusNoContent)
 	}
 
 	if len(userID) == 0 || len(list) == 0 {

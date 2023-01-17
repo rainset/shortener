@@ -215,7 +215,7 @@ func TestApp_UserURLListHandler(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/api/user/urls", nil)
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, http.StatusNoContent, w.Code)
 }
 
 func TestApp_NewRouter(t *testing.T) {
