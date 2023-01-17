@@ -6,7 +6,6 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/rainset/shortener/internal/helper"
 	"github.com/rainset/shortener/internal/storage"
-	"log"
 )
 
 type ListURL struct {
