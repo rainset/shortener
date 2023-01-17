@@ -1,6 +1,5 @@
 ### save link
 POST http://localhost:8080/
-Cookie: test
 
 http://test.com
 
