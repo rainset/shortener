@@ -44,7 +44,7 @@ type Session struct {
 func New(storage storage.InterfaceStorage, c Config) *App {
 
 	newQueue := queue.NewDeleteURLQueue(storage)
-	go newQueue.PeriodicURLDelete()
+	//go newQueue.PeriodicURLDelete()
 
 	workers := make([]*queue.DeleteURLWorker, 0, 1)
 	workers = append(workers, queue.NewDeleteURLWorker(1, newQueue, storage))
