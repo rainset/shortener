@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/rainset/shortener/internal/storage"
 	"sync"
+	"time"
 )
 
 type Task struct {
@@ -75,6 +76,9 @@ func NewDeleteURLWorker(id int, queue *DeleteURLQueue, s storage.InterfaceStorag
 func (w *DeleteURLWorker) Loop() {
 	var err error
 	for {
+
+		time.Sleep(5 * time.Second)
+
 		t := w.queue.PopWait()
 		w.queue.mu.Lock()
 		w.queue.urls = append(w.queue.urls, t.Hashes...)
