@@ -78,7 +78,7 @@ func (w *DeleteURLWorker) Loop() {
 		t := w.queue.PopWait()
 		w.queue.mu.Lock()
 		w.queue.urls = append(w.queue.urls, t.Hashes...)
-		if len(w.queue.urls) > 1 {
+		if len(w.queue.urls) > 0 {
 			err = w.s.DeleteUserBatchURL(t.CookieID, w.queue.urls)
 			if err != nil {
 				fmt.Printf("DeleteURLWorker Loop() error: %v\n", err)
