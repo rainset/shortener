@@ -8,6 +8,15 @@ GOBIN=$(GOBASE)/bin
 # Make is verbose in Linux. Make it silent.
 MAKEFLAGS += --silent
 
+test:
+	go test -count=1 -cover=1 ./...
+
+test-integration:
+	go test -tags integration -count=1 ./...
+
+bench:
+	go test -bench=1 ./...
+
 ## build: build default application
 build:
 	go build -o $(GOBIN)/main cmd/shortener/main.go
@@ -54,6 +63,9 @@ compile:
 certificate:
 	go run cmd/shortener/certificate.go
 
+## proto: generate proto files
+proto:
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/proto/shortener.proto
 
 help: Makefile
 	@echo

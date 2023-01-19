@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,16 +20,22 @@ var conf = Config{
 	ServerBaseURL:  "http://localhost:8080",
 	CookieHashKey:  "49a8aca82c132d8d1f430e32be1e6ff3",
 	CookieBlockKey: "49a8aca82c132d8d1f430e32be1e6ff2",
+	EnableHTTPS:    false,
+	GRPCMode:       false,
 }
 
 func TestApp_SaveURLHandler(t *testing.T) {
 
 	t.Run("POST add url", func(t *testing.T) {
 		s := memory.New()
-		app := New(s, conf)
-		r := app.NewRouter()
+		a := New(s, conf)
+
+		shs := &ShortenerHTTPServer{
+			a: a,
+		}
+		r := shs.NewRouter()
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest("POST", app.Config.ServerBaseURL+"/", bytes.NewBuffer([]byte("http://yandex.ru")))
+		req := httptest.NewRequest("POST", a.Config.ServerBaseURL+"/", bytes.NewBuffer([]byte("http://yandex.ru")))
 		r.ServeHTTP(w, req)
 
 		res := w.Result()
@@ -41,10 +48,13 @@ func TestApp_SaveURLHandler(t *testing.T) {
 
 	t.Run("POST empty body", func(t *testing.T) {
 		s := memory.New()
-		app := New(s, conf)
-		r := app.NewRouter()
+		a := New(s, conf)
+		shs := &ShortenerHTTPServer{
+			a: a,
+		}
+		r := shs.NewRouter()
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest("POST", app.Config.ServerBaseURL+"/", bytes.NewBuffer([]byte("")))
+		req := httptest.NewRequest("POST", a.Config.ServerBaseURL+"/", bytes.NewBuffer([]byte("")))
 		r.ServeHTTP(w, req)
 
 		res := w.Result()
@@ -60,14 +70,17 @@ func TestApp_SaveURLHandler(t *testing.T) {
 func TestApp_GetURLHandler(t *testing.T) {
 
 	s := memory.New()
-	app := New(s, conf)
+	a := New(s, conf)
 
-	_ = app.s.AddURL("testhash", "http://test.com")
+	_ = a.s.AddURL("testhash", "http://test.com")
 
-	router := app.NewRouter()
+	shs := &ShortenerHTTPServer{
+		a: a,
+	}
+	r := shs.NewRouter()
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/testhash", nil)
-	router.ServeHTTP(w, req)
+	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusTemporaryRedirect, w.Code)
 
@@ -81,8 +94,8 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 	}
 
 	type want struct {
-		code     int
 		response string
+		code     int
 	}
 
 	tests := []struct {
@@ -128,12 +141,15 @@ func TestApp_SaveURLJSONHandler(t *testing.T) {
 		// запускаем каждый тест
 		t.Run(tt.name, func(t *testing.T) {
 			s := memory.New()
-			app := New(s, conf)
+			a := New(s, conf)
 
 			// делаем тестовый http запрос
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest("POST", fmt.Sprintf(tt.request.url, app.Config.ServerBaseURL), bytes.NewBuffer([]byte(tt.request.data)))
-			r := app.NewRouter()
+			req := httptest.NewRequest("POST", fmt.Sprintf(tt.request.url, a.Config.ServerBaseURL), bytes.NewBuffer([]byte(tt.request.data)))
+			shs := &ShortenerHTTPServer{
+				a: a,
+			}
+			r := shs.NewRouter()
 			r.ServeHTTP(w, req)
 
 			result := w.Result()
@@ -158,36 +174,46 @@ func Test_readBodyBytes(t *testing.T) {
 
 func TestApp_DeleteUserBatchURLHandler(t *testing.T) {
 	s := memory.New()
-	app := New(s, conf)
+	a := New(s, conf)
 
-	router := app.NewRouter()
+	shs := &ShortenerHTTPServer{
+		a: a,
+	}
+	r := shs.NewRouter()
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("DELETE", "/api/user/urls", bytes.NewBuffer([]byte(`["hashtest"]`)))
-	router.ServeHTTP(w, req)
+	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusAccepted, w.Code)
 }
 
 func TestApp_SaveURLBatchJSONHandler(t *testing.T) {
 	s := memory.New()
-	app := New(s, conf)
+	a := New(s, conf)
 
-	router := app.NewRouter()
+	shs := &ShortenerHTTPServer{
+		a: a,
+	}
+	r := shs.NewRouter()
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/api/shorten/batch", bytes.NewBuffer([]byte(`[{"correlation_id":"222","original_url":"http://example.com"}]`)))
-	router.ServeHTTP(w, req)
+	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusCreated, w.Code)
 }
 
 func TestApp_UserURLListHandler(t *testing.T) {
 	s := memory.New()
-	app := New(s, conf)
+	a := New(s, conf)
 
-	router := app.NewRouter()
+	shs := &ShortenerHTTPServer{
+		a: a,
+	}
+
+	r := shs.NewRouter()
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/user/urls", nil)
-	router.ServeHTTP(w, req)
+	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNoContent, w.Code)
 }
@@ -198,12 +224,16 @@ func TestApp_NewRouter(t *testing.T) {
 
 func TestApp_PingHandler(t *testing.T) {
 	s := memory.New()
-	app := New(s, conf)
-
-	router := app.NewRouter()
+	a := New(s, conf)
+	shs := &ShortenerHTTPServer{
+		a: a,
+	}
+	r := shs.NewRouter()
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/ping", nil)
-	router.ServeHTTP(w, req)
+	r.ServeHTTP(w, req)
+
+	log.Println(w)
 
 	assert.Equal(t, 200, w.Code)
 

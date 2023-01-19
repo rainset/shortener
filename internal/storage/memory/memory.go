@@ -7,17 +7,20 @@ import (
 	"github.com/rainset/shortener/internal/storage"
 )
 
+// Memory -
 type Memory struct {
 	mutex           sync.RWMutex
 	urls            map[string]storage.ResultURL
 	userHistoryURLs []UserHistoryURL
 }
 
+// UserHistoryURL -
 type UserHistoryURL struct {
 	CookieID string
 	Hash     string
 }
 
+// New -
 func New() *Memory {
 	urls := make(map[string]storage.ResultURL, 0)
 	userHistoryURLs := make([]UserHistoryURL, 0)
@@ -27,6 +30,7 @@ func New() *Memory {
 	}
 }
 
+// AddURL -
 func (m *Memory) AddURL(hash, original string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -34,6 +38,7 @@ func (m *Memory) AddURL(hash, original string) error {
 	return nil
 }
 
+// GetURL -
 func (m *Memory) GetURL(hash string) (resultURL storage.ResultURL, err error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
@@ -41,6 +46,7 @@ func (m *Memory) GetURL(hash string) (resultURL storage.ResultURL, err error) {
 	return resultURL, nil
 }
 
+// GetByOriginalURL -
 func (m *Memory) GetByOriginalURL(original string) (hash string, err error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
@@ -52,12 +58,12 @@ func (m *Memory) GetByOriginalURL(original string) (hash string, err error) {
 	return "", err
 }
 
-//заглушка реализовано только для postgres
-
+// AddBatchURL заглушка реализовано только для postgres
 func (m *Memory) AddBatchURL(_ []storage.BatchUrls) (result []storage.ResultBatchUrls, err error) {
 	return result, err
 }
 
+// DeleteUserBatchURL -
 func (m *Memory) DeleteUserBatchURL(cookieID string, hashes []string) (err error) {
 
 	m.mutex.Lock()
@@ -72,6 +78,7 @@ func (m *Memory) DeleteUserBatchURL(cookieID string, hashes []string) (err error
 	return err
 }
 
+// DeleteBatchURL -
 func (m *Memory) DeleteBatchURL(hashes []string) (err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -82,6 +89,7 @@ func (m *Memory) DeleteBatchURL(hashes []string) (err error) {
 	return err
 }
 
+// AddUserHistoryURL -
 func (m *Memory) AddUserHistoryURL(cookieID, hash string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -89,6 +97,7 @@ func (m *Memory) AddUserHistoryURL(cookieID, hash string) error {
 	return nil
 }
 
+// GetListUserHistoryURL -
 func (m *Memory) GetListUserHistoryURL(cookieID string) (result []storage.ResultHistoryURL, err error) {
 	for _, item := range m.userHistoryURLs {
 		if cookieID == item.CookieID {
@@ -99,6 +108,12 @@ func (m *Memory) GetListUserHistoryURL(cookieID string) (result []storage.Result
 	return result, err
 }
 
+// Ping -
 func (m *Memory) Ping() (err error) {
 	return err
+}
+
+// GetStats -
+func (m *Memory) GetStats() (stats storage.Stats, err error) {
+	return stats, err
 }

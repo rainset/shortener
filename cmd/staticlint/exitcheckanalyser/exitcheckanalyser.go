@@ -1,5 +1,4 @@
 // Package exitcheckanalyser является кастомным анализатором os.Exit в функции main
-
 package exitcheckanalyser
 
 import (
@@ -8,18 +7,21 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+// ExitCheckAnalyzer init
 var ExitCheckAnalyzer = &analysis.Analyzer{
 	Name: "exitcheck",
 	Doc:  "анализатор, запрещающий использовать прямой вызов os.Exit в функции main пакета main",
 	Run:  run,
 }
 
+// Position хранение позиции
 type Position struct {
 	Name string
 	Pos  token.Pos
 	End  token.Pos
 }
 
+// run запуск
 func run(pass *analysis.Pass) (interface{}, error) {
 	//fset := token.NewFileSet()
 	//pass.Reportf(1, "os.Exit declaration")

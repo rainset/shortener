@@ -1,0 +1,48 @@
+### save link
+POST http://localhost:8080/
+
+http://test.com1
+
+### get link
+// @no-redirect
+GET http://localhost:8080/lz2wrrov
+
+
+### /api/user/urls
+GET http://localhost:8080/api/user/urls
+
+
+### /api/shorten/batch
+POST http://localhost:8080/api/shorten/batch
+
+[{"correlation_id":"1","original_url":"http://test.com/1/"},{"correlation_id":"2","original_url":"http://test.com/2/"},{"correlation_id":"3","original_url":"http://test.com/3/"}]
+
+### /api/user/urls
+DELETE http://localhost:8080/api/user/urls
+
+["m3kvsgki"]
+
+
+
+
+### /api/internal/stats
+GET http://localhost:8080/api/internal/stats
+X-Real-IP: 192.168.0.159
+
+### GRPC AddURL
+GRPC localhost:3200/shortener.Shortener/AddURL
+
+{"url":"http://test.com"}
+
+### GRPC GetURL
+GRPC localhost:3200/shortener.Shortener/GetURL
+
+{"hash":"http://test.com"}
+
+### GRPC AddBatchURL
+GRPC localhost:3200/shortener.Shortener/AddBatchURL
+
+[{"correlation_id":"1","original_url":"http://test.com"}]
+
+### GRPC statistics
+GRPC localhost:3200/shortener.Shortener/Stats
