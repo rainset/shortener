@@ -5,19 +5,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"os"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v4"
-
 	"github.com/rainset/shortener/internal/helper"
 	"github.com/rainset/shortener/internal/storage"
 )
 
 type Database struct {
-	pgx *pgx.Conn
+	pgx *pgxpool.Pool
 }
 
 type UserHistoryURL struct {
@@ -27,7 +27,7 @@ type UserHistoryURL struct {
 }
 
 func New(dataSourceName string) *Database {
-	db, err := pgx.Connect(context.Background(), dataSourceName)
+	db, err := pgxpool.Connect(context.Background(), dataSourceName)
 
 	if db == nil && err == nil {
 		err = errors.New("connection problems")
@@ -46,7 +46,7 @@ func New(dataSourceName string) *Database {
 	}
 }
 
-func CreateTables(db *pgx.Conn) error {
+func CreateTables(db *pgxpool.Pool) error {
 
 	c, ioErr := os.ReadFile("migrations/tables.sql")
 	if ioErr != nil {
@@ -74,14 +74,6 @@ func (d *Database) Ping() error {
 		log.Printf("ping error: %s", err)
 	}
 	return err
-}
-
-func (d *Database) Close() {
-	log.Print("DB connection closed.")
-	err := d.pgx.Close(context.Background())
-	if err != nil {
-		fmt.Println(err)
-	}
 }
 
 func (d *Database) GetURL(hash string) (resultURL storage.ResultURL, err error) {
