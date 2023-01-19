@@ -1,4 +1,4 @@
-// Пакет для очередей удаления ссылок
+// Package queue Пакет для очередей удаления ссылок
 package queue
 
 import (
@@ -7,6 +7,7 @@ import (
 	"sync"
 )
 
+// Task объект для задачи
 type Task struct {
 	UserID string
 	Hashes []string
