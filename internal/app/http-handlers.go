@@ -155,13 +155,15 @@ func (s *ShortenerHTTPServer) SaveURLHandler(c *gin.Context) {
 	bodyBytes, err = readBodyBytes(c)
 
 	if err != nil || len(bodyBytes) == 0 {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"msg": "body error"})
+		log.Println("SaveURLHandler1: ", "bodyBytes", bodyBytes, err)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
 	urlValue := string(bodyBytes)
 	addURLResult, err := s.a.AddURL(urlValue)
 	if err != nil {
+		log.Println("SaveURLHandler2: ", urlValue, addURLResult, err)
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
@@ -172,6 +174,7 @@ func (s *ShortenerHTTPServer) SaveURLHandler(c *gin.Context) {
 		c.String(http.StatusConflict, "%s", addURLResult.ShortURL)
 		return
 	} else if err != nil {
+		log.Println("SaveURLHandler3: ", err)
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	} else {
