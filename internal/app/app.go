@@ -54,6 +54,7 @@ func New(storage storage.InterfaceStorage, c Config) *App {
 
 }
 
+// Инициализация HTTP сервера
 func (a *App) StartHTTPServer() {
 
 	shs := &ShortenerHTTPServer{
@@ -105,6 +106,7 @@ func (a *App) StartHTTPServer() {
 	log.Println("Server exiting")
 }
 
+// Инициализация GRPC сервера
 func (a *App) StartGRPCServer() {
 	// определяем порт для сервера
 	listen, err := net.Listen("tcp", ":3200")
