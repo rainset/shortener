@@ -4,7 +4,6 @@ package queue
 import (
 	"fmt"
 	"github.com/rainset/shortener/internal/storage"
-	"log"
 	"sync"
 )
 
@@ -31,7 +30,7 @@ func (d *DeleterQueue) Init() error {
 	// пометка удаляемых ссылок deleted=1
 	for {
 		t := <-d.ch
-		log.Println(t)
+		//log.Println(t)
 		err := d.s.DeleteUserBatchURL(t.UserID, t.Hashes)
 		if err != nil {
 			fmt.Printf("DeleteUserBatchURL Loop() error: %v\n", err)

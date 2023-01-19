@@ -14,6 +14,9 @@ test:
 test-integration:
 	go test -tags integration -count=1 ./...
 
+bench:
+	go test -bench=1 ./...
+
 ## build: build default application
 build:
 	go build -o $(GOBIN)/main cmd/shortener/main.go
