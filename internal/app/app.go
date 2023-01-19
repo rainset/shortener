@@ -19,12 +19,14 @@ import (
 	"github.com/rainset/shortener/internal/storage"
 )
 
+// Главная Структура приложения
 type App struct {
 	dq     *queue.DeleterQueue
 	s      storage.InterfaceStorage
 	Config Config
 }
 
+// Настройки
 type Config struct {
 	ServerAddress  string
 	ServerBaseURL  string
