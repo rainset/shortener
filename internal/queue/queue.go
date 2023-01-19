@@ -12,6 +12,7 @@ type Task struct {
 	Hashes []string
 }
 
+// DeleterQueue хранение очереди удаления
 type DeleterQueue struct {
 	mx    sync.Mutex
 	s     storage.InterfaceStorage
@@ -19,6 +20,7 @@ type DeleterQueue struct {
 	tasks []Task
 }
 
+// NewDeleterQueue создаем объект
 func NewDeleterQueue(storage storage.InterfaceStorage) *DeleterQueue {
 	return &DeleterQueue{
 		s:  storage,
@@ -26,6 +28,7 @@ func NewDeleterQueue(storage storage.InterfaceStorage) *DeleterQueue {
 	}
 }
 
+// Init запуск горутины
 func (d *DeleterQueue) Init() error {
 	// пометка удаляемых ссылок deleted=1
 	for {
@@ -48,10 +51,12 @@ func (d *DeleterQueue) Init() error {
 	//}()
 }
 
+// PopWait чтение канала
 func (d *DeleterQueue) PopWait() *Task {
 	return <-d.ch
 }
 
+// Push запись в канал
 func (d *DeleterQueue) Push(t *Task) {
 	d.ch <- t
 }

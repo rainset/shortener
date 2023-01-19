@@ -14,12 +14,14 @@ var ExitCheckAnalyzer = &analysis.Analyzer{
 	Run:  run,
 }
 
+// хранение позиции
 type Position struct {
 	Name string
 	Pos  token.Pos
 	End  token.Pos
 }
 
+// запуск
 func run(pass *analysis.Pass) (interface{}, error) {
 	//fset := token.NewFileSet()
 	//pass.Reportf(1, "os.Exit declaration")

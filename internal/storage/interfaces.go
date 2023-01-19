@@ -29,6 +29,7 @@ type ResultHistoryURL struct {
 	Original string
 }
 
+// Stats статистика
 type Stats struct {
 	Urls  int
 	Users int

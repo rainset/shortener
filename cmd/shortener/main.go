@@ -31,6 +31,7 @@ var (
 	grpcMode        *string
 )
 
+// настройки приложения
 type ConfigFileData struct {
 	ServerAddress   string `json:"server_address"`
 	ServerBaseURL   string `json:"base_url"`
@@ -41,6 +42,7 @@ type ConfigFileData struct {
 	GRPCMode        bool   `json:"grpc_mode"`
 }
 
+// инициализация флагов
 func init() {
 	// регистрация структуры для сессии
 	gob.Register(app.Session{})
@@ -57,6 +59,7 @@ func init() {
 	grpcMode = flag.String("g", os.Getenv("GRPC_MODE"), "start GRPC server")
 }
 
+// main
 func main() {
 
 	var s storage.InterfaceStorage

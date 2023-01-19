@@ -9,45 +9,53 @@ import (
 	"github.com/rainset/shortener/internal/storage"
 )
 
+// ListURL структура для вывода списка ссылок
 type ListURL struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
+// AddURLResult структура ответа добавления ссылки
 type AddURLResult struct {
 	ShortURL string
 	Hash     string
 	Exists   bool
 }
 
+// AddURLBatchRequest структура запроса batch добавления ссылки
 type AddURLBatchRequest struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
 }
 
+// AddURLBatchResponse структура ответа batch добавления ссылки
 type AddURLBatchResponse struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
 }
 
+// GetStats статистика сервиса
 func (a *App) GetStats() (storage.Stats, error) {
 
 	stats, err := a.s.GetStats()
 	return stats, err
 }
 
+// Ping проверка ответа
 func (a *App) Ping() error {
 
 	err := a.s.Ping()
 	return err
 }
 
+// GetURL получение данные по хешу ссылки
 func (a *App) GetURL(hash string) (storage.ResultURL, error) {
 
 	result, err := a.s.GetURL(hash)
 	return result, err
 }
 
+// GetListUserHistoryURL списко ссылок пользователя
 func (a *App) GetListUserHistoryURL(userID string) ([]ListURL, error) {
 
 	var userHistoryURLs []storage.ResultHistoryURL
@@ -66,6 +74,7 @@ func (a *App) GetListUserHistoryURL(userID string) ([]ListURL, error) {
 	return list, err
 }
 
+// AddURL добавление ссылки
 func (a *App) AddURL(originalURL string) (result AddURLResult, err error) {
 
 	result.Hash = helper.GenerateToken(8)
@@ -88,6 +97,7 @@ func (a *App) AddURL(originalURL string) (result AddURLResult, err error) {
 	return result, err
 }
 
+// AddBatchURL массовое добавление ссылок
 func (a *App) AddBatchURL(list []AddURLBatchRequest) (result []AddURLBatchResponse, err error) {
 
 	batchURLs := make([]storage.BatchUrls, 0)
@@ -109,11 +119,13 @@ func (a *App) AddBatchURL(list []AddURLBatchRequest) (result []AddURLBatchRespon
 	return result, err
 }
 
+// AddUserHistoryURL привязка ссылок к пользователю
 func (a *App) AddUserHistoryURL(userID, hash string) (err error) {
 	err = a.s.AddUserHistoryURL(userID, hash)
 	return err
 }
 
+// DeleteUserBatchURL массовое удвление ссылок
 func (a *App) DeleteUserBatchURL(userID string, hashes []string) {
 	a.dq.Push(&queue.Task{UserID: userID, Hashes: hashes})
 }

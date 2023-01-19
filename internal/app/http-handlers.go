@@ -17,6 +17,7 @@ import (
 	"github.com/rainset/shortener/internal/helper"
 )
 
+// ShortenerHTTPServer Структура для хендлеров
 type ShortenerHTTPServer struct {
 	a *App
 }

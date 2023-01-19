@@ -16,16 +16,19 @@ import (
 	"github.com/rainset/shortener/internal/storage"
 )
 
+// Database структура
 type Database struct {
 	pgx *pgxpool.Pool
 }
 
+// UserHistoryURL -
 type UserHistoryURL struct {
 	ID       int
 	CookieID string
 	Hash     string
 }
 
+// New -
 func New(dataSourceName string) *Database {
 	db, err := pgxpool.Connect(context.Background(), dataSourceName)
 
@@ -46,6 +49,7 @@ func New(dataSourceName string) *Database {
 	}
 }
 
+// CreateTables -
 func CreateTables(db *pgxpool.Pool) error {
 
 	c, ioErr := os.ReadFile("migrations/tables.sql")
@@ -63,6 +67,7 @@ func CreateTables(db *pgxpool.Pool) error {
 	return nil
 }
 
+// Ping -
 func (d *Database) Ping() error {
 
 	if d.pgx == nil {
@@ -76,6 +81,7 @@ func (d *Database) Ping() error {
 	return err
 }
 
+// GetURL -
 func (d *Database) GetURL(hash string) (resultURL storage.ResultURL, err error) {
 	q := "SELECT * FROM urls WHERE hash = $1"
 	err = d.pgx.QueryRow(context.Background(), q, hash).Scan(&resultURL.ID, &resultURL.Hash, &resultURL.Original, &resultURL.Deleted)
@@ -86,6 +92,7 @@ func (d *Database) GetURL(hash string) (resultURL storage.ResultURL, err error) 
 	return resultURL, err
 }
 
+// GetByOriginalURL -
 func (d *Database) GetByOriginalURL(originalURL string) (hash string, err error) {
 	q := "SELECT hash FROM urls WHERE original = $1"
 	err = d.pgx.QueryRow(context.Background(), q, originalURL).Scan(&hash)
@@ -96,6 +103,7 @@ func (d *Database) GetByOriginalURL(originalURL string) (hash string, err error)
 	return hash, nil
 }
 
+// AddURL -
 func (d *Database) AddURL(hash, original string) error {
 	q := "INSERT INTO urls (hash, original, deleted) VALUES ($1, $2, $3)"
 	_, err := d.pgx.Exec(context.Background(), q, hash, original, 0)
@@ -105,6 +113,7 @@ func (d *Database) AddURL(hash, original string) error {
 	return nil
 }
 
+// AddUserHistoryURL -
 func (d *Database) AddUserHistoryURL(cookieID, hash string) error {
 	q := "INSERT INTO user_history_urls (cookie_id, hash) VALUES ($1, $2)"
 	_, err := d.pgx.Exec(context.Background(), q, cookieID, hash)
@@ -120,6 +129,7 @@ func (d *Database) AddUserHistoryURL(cookieID, hash string) error {
 	return nil
 }
 
+// GetListUserHistoryURL -
 func (d *Database) GetListUserHistoryURL(cookieID string) (result []storage.ResultHistoryURL, err error) {
 
 	q := "SELECT DISTINCT uh.hash, uh.id, uh.cookie_id, u.original FROM user_history_urls uh INNER JOIN urls u ON u.hash = uh.hash WHERE uh.cookie_id =$1 AND u.deleted=0"
@@ -142,6 +152,7 @@ func (d *Database) GetListUserHistoryURL(cookieID string) (result []storage.Resu
 	return result, err
 }
 
+// AddBatchURL -
 func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.ResultBatchUrls, err error) {
 	tx, err := d.pgx.Begin(context.Background())
 	if err != nil {
@@ -183,6 +194,7 @@ func (d *Database) AddBatchURL(urls []storage.BatchUrls) (result []storage.Resul
 	return result, nil
 }
 
+// DeleteUserBatchURL -
 func (d *Database) DeleteUserBatchURL(cookieID string, hashes []string) (err error) {
 
 	ctx := context.Background()
@@ -215,6 +227,7 @@ func (d *Database) DeleteUserBatchURL(cookieID string, hashes []string) (err err
 	return nil
 }
 
+// DeleteBatchURL -
 func (d *Database) DeleteBatchURL(hashes []string) (err error) {
 
 	ctx := context.Background()
@@ -247,6 +260,7 @@ func (d *Database) DeleteBatchURL(hashes []string) (err error) {
 	return nil
 }
 
+// GetStats статистика
 func (d *Database) GetStats() (stats storage.Stats, err error) {
 	q1 := "SELECT COUNT(*) FROM urls WHERE deleted=0;"
 	err = d.pgx.QueryRow(context.Background(), q1).Scan(&stats.Urls)
